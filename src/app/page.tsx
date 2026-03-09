@@ -13,6 +13,21 @@ import useSWR, { mutate } from 'swr'
 
 const fetcher = (url: string) => fetch(url).then(res => res.json())
 
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 interface AAItem {
   id: string
   name: string
@@ -94,8 +109,34 @@ export default function HomePage() {
 
   useEffect(() => {
     setHasMounted(true)
-    // SWR handles initial fetch and revalidation automatically
-  }, [])
+
+    // Web Push Registration
+    if ('serviceWorker' in navigator && 'PushManager' in window && identity) {
+      navigator.serviceWorker.register('/sw.js').then(async (reg) => {
+        console.log('SW Registered');
+
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+          try {
+            sub = await reg.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!)
+            });
+          } catch (e) {
+            console.error('Failed to subscribe to push', e);
+          }
+        }
+
+        if (sub) {
+          await fetch('/api/push/subscription', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identity, subscription: sub })
+          });
+        }
+      });
+    }
+  }, [identity])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -164,6 +205,34 @@ export default function HomePage() {
     })
     mutate(url => typeof url === 'string' && url.includes('/api/records'))
     showToast('已标记结清')
+  }
+
+  async function handleNudge(record: RecordItem) {
+    const targetIdentity = identity === 'me' ? 'her' : 'me'
+    const name = record.aa_items?.map(i => i.name).join('、') || '一笔账单'
+    const amount = record.total_amount! - (record.my_share || 0)
+
+    try {
+      showToast('正在向 Ta 发送提醒...')
+      const res = await fetch('/api/push/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetIdentity,
+          title: '💸 记账提醒',
+          body: `嘿~ 你的亲亲提醒你有一笔 [${name}] 的账单待结清 (${amount}元) 哦`,
+          url: '/'
+        })
+      })
+      const data = await res.json()
+      if (data.success && data.count > 0) {
+        showToast('已成功通过手机通知提醒 Ta')
+      } else {
+        showToast('Ta 的手机通知未开启或订阅过期', false)
+      }
+    } catch (e) {
+      showToast('发送失败', false)
+    }
   }
 
   async function handleDelete(id: string, type: string) {
@@ -335,6 +404,7 @@ export default function HomePage() {
                 expanded={expandedId === r.id}
                 onToggle={() => setExpandedId(expandedId === r.id ? null : r.id)}
                 onSettle={handleSettle}
+                onNudge={handleNudge}
                 onEdit={() => setEditingRecord(r)}
                 partnerName={partnerName}
                 identity={identity}
@@ -366,7 +436,7 @@ export default function HomePage() {
   )
 }
 
-function RecordCard({ record, expanded, onToggle, onSettle, onEdit, partnerName, identity, avatarUrl, partnerAvatarUrl }: any) {
+function RecordCard({ record, expanded, onToggle, onSettle, onNudge, onEdit, partnerName, identity, avatarUrl, partnerAvatarUrl }: any) {
   const isGift = record.record_type === 'gift'
   const isMePayerTarget = isGift ? record.from_user === identity : record.payer === identity
 
@@ -468,7 +538,7 @@ function RecordCard({ record, expanded, onToggle, onSettle, onEdit, partnerName,
                 onClick={(e) => {
                   e.stopPropagation();
                   if (isMePayerTarget) {
-                    alert('催办功能开发中，你可以直接微信 Ta 哦');
+                    onNudge(record);
                   } else {
                     onSettle(record.id);
                   }
