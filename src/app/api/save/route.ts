@@ -10,7 +10,8 @@ const supabase = createClient(
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const items = Array.isArray(body) ? body : [body]
+  const { identity, items: rawItems } = body
+  const items = Array.isArray(rawItems) ? rawItems : (body.items ? body.items : (Array.isArray(body) ? body : [body]))
   const savedResults = []
 
   for (const entry of items) {
@@ -48,7 +49,12 @@ export async function POST(req: NextRequest) {
       ))
 
       const { data: bill, error: billError } = await supabase.from('aa_bills').insert([{
-        payer, status: 'pending', total_amount: total, my_share, source_text,
+        payer, status: 'pending',
+        total_amount: total,
+        // If identity is 'her', the 'my_share' from AI is her share. 
+        // We need to save the complement (me's share) to DB.
+        my_share: identity === 'her' ? (total - my_share) : my_share,
+        source_text,
         note: note ?? null, date: date ?? new Date().toISOString().split('T')[0],
       }]).select().single()
 

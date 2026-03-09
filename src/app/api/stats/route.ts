@@ -71,7 +71,11 @@ export async function GET() {
     // Balance History (AA only)
     if (!isGift && record.status === 'pending') {
       const share = Number(record.my_share || 0)
-      dailyNetChanges[dateStr] = (dailyNetChanges[dateStr] || 0) + (payer === 'me' ? share : -share)
+      const total = Number(record.total_amount || 0)
+      // If I pay, she owes me (total - my_share)
+      // If she pays, I owe her (my_share)
+      const netChange = payer === 'me' ? (total - share) : -share
+      dailyNetChanges[dateStr] = (dailyNetChanges[dateStr] || 0) + netChange
     }
   }
 
@@ -91,10 +95,14 @@ export async function GET() {
   let settledCount = 0
 
   bills.forEach(b => {
+    const total = Number(b.total_amount || 0)
     const share = Number(b.my_share || 0)
     if (b.status === 'pending') {
       pendingCount++
-      pendingBalance += (b.payer === 'me' ? share : -share)
+      // Corrected logic: 
+      // If I pay, the balance increases by what SHE owes me (total - my_share)
+      // If she pays, the balance decreases by what I owe HER (my_share)
+      pendingBalance += (b.payer === 'me' ? (total - share) : -share)
     } else {
       settledCount++
     }

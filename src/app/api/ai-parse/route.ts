@@ -31,7 +31,7 @@ AA 账单 (aa)：
   "payer": "me | her",
   "items": [{ "name": "商品名（去 Emoji）", "amount": 数字, "category": "分类名" }],
   "total": 合计数字,
-  "my_share": 合计÷2,
+  "my_share": 数字, // 重要：这是指归属于“我”的那部分金额
   "note": "备注（去 Emoji）",
   "date": "YYYY-MM-DD"
 }
@@ -41,12 +41,17 @@ AA 账单 (aa)：
 2. 在结果中：
    - 如果当前身份是 "我"，则 "我" 映射为 'me'，"她/对方" 映射为 'her'。
    - 如果当前身份是 "她"，则 "我" 映射为 'her'，"他/对方" 映射为 'me'。
-3. 语义解析：
+3. 债务（AA）分摊逻辑：
+   - 默认 AA：如果没有特别说明，默认双方平摊，my_share 为总金额的一半。
+   - 借款/代付全部：
+     - 如果是“我借给对方X元”或“我帮对方付了全部X元”，则 payer 为 [当前身份], my_share 为 0 (表示全部由对方欠债)。
+     - 如果是“对方借给我X元”或“对方帮我付了全部X元”，则 payer 为 [对方], my_share 为 X (表示全部由我欠债)。
+4. 语义解析示例：
    - "我请..."、"我买了礼物送给..." -> type: "gift", from: [当前身份], to: [对方]。
-   - "她请我..."、"对方送我..." -> type: "gift", from: [对方], to: [当前身份]。
-   - "我付了..."、"我买了..." -> type: "aa", payer: [当前身份]。
-   - "她付了..."、"对方买了..." -> type: "aa", payer: [对方]。
-4. 如果未指明支付人或送礼人，默认 payer/from 为 [当前身份]。`
+   - "她请我..." -> type: "gift", from: [对方], to: [当前身份]。
+   - "我付了..." -> type: "aa", payer: [当前身份] (默认平摊)。
+   - "我借给对方50元" -> type: "aa", payer: [当前身份], total: 50, my_share: 0。
+5. 如果未指明支付人或送礼人，默认 payer/from 为 [当前身份]。`
 
 export async function POST(req: NextRequest) {
   const { text, identity } = await req.json()

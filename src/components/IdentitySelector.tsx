@@ -7,9 +7,9 @@ import { Heart } from 'lucide-react'
 export default function IdentitySelector() {
   const { setIdentity } = useIdentity()
 
-  const options: { id: UserType; label: string; desc: string }[] = [
-    { id: 'me', label: '我', desc: '以"我"的身份使用' },
-    { id: 'her', label: '她', desc: '以"她"的身份使用' },
+  const options: { id: UserType; label: string; icon: string; desc: string; color: string }[] = [
+    { id: 'me', label: '我', icon: '👦', desc: '记录我的视角与个人花销', color: 'var(--blue)' },
+    { id: 'her', label: '她', icon: '👧', desc: '记录她的视角与个人动态', color: 'var(--accent)' },
   ]
 
   return (
@@ -21,100 +21,122 @@ export default function IdentitySelector() {
         alignItems: 'center',
         justifyContent: 'center',
         padding: '24px',
-        background: 'var(--bg-primary)',
+        background: 'radial-gradient(circle at top right, #1a1917, #0f0e0d)',
+        position: 'relative',
+        overflow: 'hidden'
       }}
     >
-      <div className="slide-up" style={{ width: '100%', maxWidth: '360px', textAlign: 'center' }}>
-        {/* Logo */}
-        <div style={{ marginBottom: '32px' }}>
+      {/* Decorative Orbs */}
+      <div style={{
+        position: 'absolute', top: '-10%', right: '-5%', width: '40%', height: '40%',
+        background: 'radial-gradient(circle, rgba(232,149,109,0.08) 0%, transparent 70%)',
+        zIndex: 0,
+      }} />
+      <div style={{
+        position: 'absolute', bottom: '-10%', left: '-5%', width: '40%', height: '40%',
+        background: 'radial-gradient(circle, rgba(125,184,247,0.08) 0%, transparent 70%)',
+        zIndex: 0,
+      }} />
+
+      <div className="scale-in" style={{ width: '100%', maxWidth: '400px', textAlign: 'center', zIndex: 1, position: 'relative' }}>
+        {/* Logo Section */}
+        <div style={{ marginBottom: '48px' }}>
           <div
             style={{
-              width: '64px',
-              height: '64px',
-              borderRadius: '18px',
-              background: 'var(--accent-bg)',
-              border: '1px solid rgba(232,149,109,0.3)',
+              width: '80px',
+              height: '80px',
+              borderRadius: '24px',
+              background: 'linear-gradient(135deg, var(--accent), var(--accent-soft))',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              margin: '0 auto 20px',
+              margin: '0 auto 24px',
+              boxShadow: '0 12px 30px rgba(232,149,109,0.3)',
+              position: 'relative'
             }}
           >
-            <Heart size={28} fill="var(--accent)" strokeWidth={0} />
+            <div style={{ position: 'absolute', inset: '4px', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '20px' }} />
+            <Heart size={36} fill="#fff" strokeWidth={0} />
           </div>
-          <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '8px' }}>
+          <h1 style={{ fontSize: '32px', fontWeight: '900', color: 'var(--text-primary)', marginBottom: '8px', letterSpacing: '-1px' }}>
             WeRecord
           </h1>
-          <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: '1.6' }}>
-            记录我们之间的礼物与花销
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '16px' }}>
+            <div style={{ height: '1px', width: '20px', background: 'var(--border-strong)' }} />
+            <span style={{ fontSize: '13px', color: 'var(--accent)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px' }}>
+              Couple Archive
+            </span>
+            <div style={{ height: '1px', width: '20px', background: 'var(--border-strong)' }} />
+          </div>
+          <p style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: '1.6', maxWidth: '280px', margin: '0 auto' }}>
+            精细化管理你们的共享支出、礼物与成长点滴
           </p>
         </div>
 
-        {/* Selection */}
-        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-          请选择你的身份
-        </p>
+        {/* Selection Box */}
+        <div className="glass" style={{
+          padding: '24px',
+          borderRadius: '24px',
+          border: '1px solid rgba(255,255,255,0.05)',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.4)'
+        }}>
+          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px', fontWeight: '600' }}>
+            HI，请选择你的初始角色
+          </p>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {options.map((opt) => (
-            <button
-              key={opt.id}
-              onClick={() => setIdentity(opt.id)}
-              style={{
-                width: '100%',
-                padding: '20px 24px',
-                background: 'var(--bg-card)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius)',
-                cursor: 'pointer',
-                textAlign: 'left',
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '16px',
-              }}
-              onMouseEnter={(e) => {
-                const el = e.currentTarget
-                el.style.borderColor = 'var(--accent)'
-                el.style.background = 'var(--accent-bg)'
-              }}
-              onMouseLeave={(e) => {
-                const el = e.currentTarget
-                el.style.borderColor = 'var(--border)'
-                el.style.background = 'var(--bg-card)'
-              }}
-            >
-              <div
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {options.map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => setIdentity(opt.id)}
+                className="premium-card"
                 style={{
-                  width: '44px',
-                  height: '44px',
-                  borderRadius: '12px',
+                  width: '100%',
+                  padding: '16px',
                   background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border)',
+                  cursor: 'pointer',
+                  textAlign: 'left',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '20px',
-                  fontWeight: '700',
-                  color: 'var(--accent)',
-                  flexShrink: 0,
+                  gap: '16px',
+                  position: 'relative'
                 }}
               >
-                {opt.label}
-              </div>
-              <div>
-                <div style={{ fontSize: '15px', fontWeight: '600', color: 'var(--text-primary)' }}>
-                  {opt.label}的视角
+                <div
+                  style={{
+                    width: '52px',
+                    height: '52px',
+                    borderRadius: '16px',
+                    background: `linear-gradient(135deg, ${opt.color}20, ${opt.color}10)`,
+                    border: `1px solid ${opt.color}30`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '24px',
+                    flexShrink: 0,
+                  }}
+                >
+                  {opt.icon}
                 </div>
-                <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  {opt.desc}
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-primary)' }}>
+                    {opt.label}的账户
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    {opt.desc}
+                  </div>
                 </div>
-              </div>
-            </button>
-          ))}
+                <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--bg-card)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: opt.color }} />
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
 
-        <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '24px' }}>
-          身份仅存储在本设备，随时可在顶部切换
+        <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '32px', opacity: 0.6 }}>
+          身份数据仅本地存储，你可以随时在设置中切换
         </p>
       </div>
     </div>

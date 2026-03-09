@@ -15,7 +15,18 @@ interface EditModalProps {
 
 export function EditModal({ record, onClose, onSave, onDelete, identity, partnerName }: EditModalProps) {
   const isGift = record.record_type === 'gift'
-  const [formData, setFormData] = useState({ ...record })
+
+  // Initialize form data, mirroring my_share if identity is 'her'
+  const [formData, setFormData] = useState(() => {
+    if (!isGift && identity === 'her') {
+      return {
+        ...record,
+        my_share: (record.total_amount || 0) - (record.my_share || 0)
+      }
+    }
+    return { ...record }
+  })
+
   const [categories, setCategories] = useState<{ name: string }[]>([])
   const [isSaving, setIsSaving] = useState(false)
 
@@ -26,17 +37,23 @@ export function EditModal({ record, onClose, onSave, onDelete, identity, partner
   const handleSave = async () => {
     setIsSaving(true)
     try {
+      // Prepare final data: flip my_share back to 'me' perspective if needed
+      const finalData = { ...formData }
+      if (!isGift && identity === 'her') {
+        finalData.my_share = (formData.total_amount || 0) - (formData.my_share || 0)
+      }
+
       const res = await fetch('/api/records', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: record.id,
           type: record.record_type,
-          ...formData
+          ...finalData
         })
       })
       if (res.ok) {
-        onSave(formData)
+        onSave(finalData)
         onClose()
       }
     } finally {
@@ -112,8 +129,42 @@ export function EditModal({ record, onClose, onSave, onDelete, identity, partner
                 <input
                   type="number" className="input"
                   value={formData.total_amount || ''}
-                  onChange={e => setFormData({ ...formData, total_amount: parseFloat(e.target.value) })}
+                  onChange={e => {
+                    const total = parseFloat(e.target.value) || 0
+                    setFormData({ ...formData, total_amount: total, my_share: total / 2 })
+                  }}
                 />
+              </div>
+              <div>
+                <label style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>我的分摊 (My Share)</label>
+                <input
+                  type="number" className="input"
+                  value={formData.my_share ?? ''}
+                  onChange={e => setFormData({ ...formData, my_share: parseFloat(e.target.value) || 0 })}
+                />
+                <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                  <button
+                    className="btn-ghost"
+                    style={{ fontSize: '11px', padding: '4px 8px', border: '1px solid var(--border)', borderRadius: '6px' }}
+                    onClick={() => setFormData({ ...formData, my_share: (formData.total_amount || 0) / 2 })}
+                  >
+                    对半 AA
+                  </button>
+                  <button
+                    className="btn-ghost"
+                    style={{ fontSize: '11px', padding: '4px 8px', border: '1px solid var(--border)', borderRadius: '6px' }}
+                    onClick={() => setFormData({ ...formData, my_share: 0 })}
+                  >
+                    我借 Ta 全部
+                  </button>
+                  <button
+                    className="btn-ghost"
+                    style={{ fontSize: '11px', padding: '4px 8px', border: '1px solid var(--border)', borderRadius: '6px' }}
+                    onClick={() => setFormData({ ...formData, my_share: formData.total_amount || 0 })}
+                  >
+                    Ta 借我全部
+                  </button>
+                </div>
               </div>
             </>
           )}

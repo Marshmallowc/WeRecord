@@ -111,12 +111,12 @@ export default function SettingsPage() {
                 key={url}
                 onClick={() => setSelectedAvatar(url)}
                 style={{
-                  position: 'relative', cursor: 'pointer', borderRadius: '16px',
+                  position: 'relative', cursor: 'pointer', borderRadius: '50%',
                   overflow: 'hidden', border: selectedAvatar === url ? '2px solid var(--accent)' : '2px solid transparent',
                   background: 'var(--bg-secondary)', padding: '4px'
                 }}
               >
-                <img src={url} alt="Avatar Option" style={{ width: '100%', borderRadius: '12px' }} />
+                <img src={url} alt="Avatar Option" style={{ width: '100%', borderRadius: '50%' }} />
                 {selectedAvatar === url && (
                   <div style={{ position: 'absolute', top: '4px', right: '4px', background: 'var(--accent)', borderRadius: '50%', width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Check size={10} color="#fff" />

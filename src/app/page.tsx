@@ -46,7 +46,7 @@ interface ParsedResult {
 }
 
 export default function HomePage() {
-  const { identity, partnerName } = useIdentity()
+  const { identity, partnerName, avatarUrl, partnerAvatarUrl } = useIdentity()
   const [hasMounted, setHasMounted] = useState(false)
   const [text, setText] = useState('')
   const [isParsing, setIsParsing] = useState(false)
@@ -65,15 +65,24 @@ export default function HomePage() {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // SWR for Records
+  // SWR for Records - Optimized for depth and persistence
   const { data: recordsData, isLoading: isLoadingRecords, isValidating } = useSWR(
     `/api/records?limit=40&search=${search}&type=${filterType}&category=${filterCategory}`,
     fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 5000 }
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      revalidateIfStale: false, // Use stale data until a hard refresh happens
+      dedupingInterval: 15000,   // Prevent redundant fetches within 15 seconds
+    }
   )
 
-  // SWR for Categories
-  const { data: catData } = useSWR('/api/categories', fetcher)
+  // SWR for Categories - Rarely changes
+  const { data: catData } = useSWR('/api/categories', fetcher, {
+    revalidateOnFocus: false,
+    revalidateIfStale: false,
+    dedupingInterval: 60000 // 1 minute cache for category list
+  })
   const categories = catData?.data ?? []
   const records = recordsData?.data ?? []
   const mountedRef = useRef(false)
@@ -122,11 +131,14 @@ export default function HomePage() {
     if (!preview) return
     setIsSaving(true)
     try {
-      const payload = preview.results.map(r => ({
-        type: r.type,
-        result: r,
-        source_text: preview.source_text
-      }))
+      const payload = {
+        identity,
+        items: preview.results.map(r => ({
+          type: r.type,
+          result: r,
+          source_text: preview.source_text
+        }))
+      }
       const res = await fetch('/api/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -326,6 +338,8 @@ export default function HomePage() {
                 onEdit={() => setEditingRecord(r)}
                 partnerName={partnerName}
                 identity={identity}
+                avatarUrl={avatarUrl}
+                partnerAvatarUrl={partnerAvatarUrl}
               />
             ))}
           </div>
@@ -352,9 +366,20 @@ export default function HomePage() {
   )
 }
 
-function RecordCard({ record, expanded, onToggle, onSettle, onEdit, partnerName, identity }: any) {
+function RecordCard({ record, expanded, onToggle, onSettle, onEdit, partnerName, identity, avatarUrl, partnerAvatarUrl }: any) {
   const isGift = record.record_type === 'gift'
   const isMePayerTarget = isGift ? record.from_user === identity : record.payer === identity
+
+  // Calculate personal share relative to current identity
+  // Database always stores my_share relative to 'me'
+  const effectiveMyShare = identity === 'me' ? (record.my_share || 0) : ((record.total_amount || 0) - (record.my_share || 0))
+
+  // Display Amount logic:
+  // If I am the payer, I care about how much the OTHER person owes me (Total - MyShare)
+  // If I am NOT the payer, I care about how much I owe (MyShare)
+  const displayAmount = isGift
+    ? record.amount
+    : (isMePayerTarget ? ((record.total_amount || 0) - effectiveMyShare) : effectiveMyShare)
 
   return (
     <div className="premium-card scale-in" style={{
@@ -369,7 +394,9 @@ function RecordCard({ record, expanded, onToggle, onSettle, onEdit, partnerName,
                 fontSize: '10px', fontWeight: '800', padding: '2px 6px', borderRadius: '4px',
                 background: isGift ? 'var(--accent-bg)' : (isMePayerTarget ? 'var(--blue-bg)' : 'var(--green-bg)'),
                 color: isGift ? 'var(--accent)' : (isMePayerTarget ? 'var(--blue)' : 'var(--green)')
-              }}>{isGift ? 'GIFT' : 'AA'}</span>
+              }}>
+                {isGift ? 'GIFT' : ((record.my_share === 0 || record.my_share === record.total_amount) ? 'DEBT' : 'AA')}
+              </span>
               <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                 {record.date}
               </span>
@@ -377,17 +404,25 @@ function RecordCard({ record, expanded, onToggle, onSettle, onEdit, partnerName,
             <h3 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '4px' }}>
               {isGift ? record.title : record.aa_items?.map((i: any) => i.name).join('、')}
             </h3>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-              <User size={12} />
-              {isGift
-                ? (record.from_user === identity ? `我送给${partnerName}` : `${partnerName}送我的`)
-                : (record.payer === identity ? '我付的' : `${partnerName}付的`)
-              }
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <div style={{ width: '24px', height: '24px', borderRadius: '8px', overflow: 'hidden', background: 'var(--bg-secondary)', border: '1px solid var(--border)', flexShrink: 0 }}>
+                {isMePayerTarget ? (
+                  avatarUrl ? <img src={avatarUrl} alt="Me" style={{ width: '100%', height: '100%' }} /> : <User size={12} style={{ padding: '6px' }} />
+                ) : (
+                  partnerAvatarUrl ? <img src={partnerAvatarUrl} alt="Partner" style={{ width: '100%', height: '100%' }} /> : <User size={12} style={{ padding: '6px' }} />
+                )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                {isGift
+                  ? (record.from_user === identity ? `我送给${partnerName}` : `${partnerName}送我的`)
+                  : (record.payer === identity ? '我付的' : `${partnerName}付的`)
+                }
+              </div>
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: '18px', fontWeight: '900', color: !isGift && record.status === 'settled' ? 'var(--text-muted)' : 'var(--text-primary)' }}>
-              {formatCurrency(isGift ? record.amount : record.my_share)}
+              {formatCurrency(displayAmount)}
             </div>
             {!isGift && (
               <div style={{ fontSize: '10px', color: record.status === 'settled' ? 'var(--green)' : 'var(--text-muted)', fontWeight: '800' }}>
@@ -409,13 +444,41 @@ function RecordCard({ record, expanded, onToggle, onSettle, onEdit, partnerName,
             </p>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-secondary" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); onEdit() }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'stretch' }}>
+            <button
+              className="btn btn-secondary"
+              style={{ flex: 1, height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '100px' }}
+              onClick={(e) => { e.stopPropagation(); onEdit() }}
+            >
               <Edit3 size={14} /> 编辑
             </button>
             {!isGift && record.status === 'pending' && (
-              <button className="btn-primary" style={{ flex: 2, background: 'var(--green)', boxShadow: 'none' }} onClick={(e) => { e.stopPropagation(); onSettle(record.id) }}>
-                <Check size={14} /> 结清账单
+              <button
+                className="btn-primary"
+                style={{
+                  flex: 2,
+                  height: '44px',
+                  background: isMePayerTarget ? 'var(--blue)' : 'var(--green)',
+                  boxShadow: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '100px'
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (isMePayerTarget) {
+                    alert('催办功能开发中，你可以直接微信 Ta 哦');
+                  } else {
+                    onSettle(record.id);
+                  }
+                }}
+              >
+                {isMePayerTarget ? (
+                  <><RefreshCw size={14} style={{ marginRight: '6px' }} /> 催 Ta 结算</>
+                ) : (
+                  <><Check size={14} style={{ marginRight: '6px' }} /> 结清账单</>
+                )}
               </button>
             )}
           </div>

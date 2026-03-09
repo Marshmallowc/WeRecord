@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useState, useRef, useMemo } from 'react'
+import useSWR from 'swr'
 import { useIdentity } from '@/context/IdentityContext'
 import { formatCurrency } from '@/lib/utils'
 import {
   ArrowRightLeft, Heart, BarChart3, TrendingUp, Calendar,
-  Coffee, PartyPopper, CalendarDays
+  Coffee, PartyPopper, CalendarDays, Sparkles, RefreshCw
 } from 'lucide-react'
 
 interface StatsData {
@@ -38,20 +39,16 @@ type StatsTab = 'aa' | 'gifts' | 'trends'
 
 export default function StatsPage() {
   const { identity, partnerName } = useIdentity()
-  const [stats, setStats] = useState<StatsData | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [tab, setTab] = useState<StatsTab>('trends') // Default to trends for V5
-  const [range, setRange] = useState<'7' | '30' | '90' | 'all'>('30')
-  const mountedRef = useRef(false)
+  const fetcher = (url: string) => fetch(url).then(r => r.json())
+  const { data: stats, isLoading } = useSWR<StatsData>('/api/stats', fetcher, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    revalidateIfStale: false,
+    dedupingInterval: 15000
+  })
 
-  useEffect(() => {
-    if (mountedRef.current) return
-    mountedRef.current = true
-    fetch('/api/stats')
-      .then(r => r.json())
-      .then(d => setStats(d))
-      .finally(() => setIsLoading(false))
-  }, [])
+  const [tab, setTab] = useState<StatsTab>('trends')
+  const [range, setRange] = useState<'7' | '30' | '90' | 'all'>('30')
 
   if (isLoading) return <StatsSkeleton />
   if (!stats) return null
@@ -257,38 +254,100 @@ export default function StatsPage() {
 
 function AIInsightsCard({ stats, identity, partnerName }: { stats: StatsData, identity: string, partnerName: string }) {
   const [insight, setInsight] = useState<string>('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<number>(0)
 
   useEffect(() => {
-    fetch('/api/ai-insights', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stats, identity, partnerName })
-    })
-      .then(r => r.json())
-      .then(d => setInsight(d.insight))
-      .finally(() => setLoading(false))
-  }, [stats, identity, partnerName])
+    const cached = localStorage.getItem('werecord_ai_insight')
+    if (cached) {
+      const { content, timestamp } = JSON.parse(cached)
+      // Cache for 24 hours
+      if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
+        setInsight(content)
+        setLastUpdated(timestamp)
+      }
+    }
+  }, [])
+
+  const fetchInsight = async () => {
+    if (loading) return
+    setLoading(true)
+    try {
+      const res = await fetch('/api/ai-insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stats, identity, partnerName })
+      })
+      const data = await res.json()
+      if (data.insight) {
+        setInsight(data.insight)
+        const timestamp = Date.now()
+        setLastUpdated(timestamp)
+        localStorage.setItem('werecord_ai_insight', JSON.stringify({
+          content: data.insight,
+          timestamp
+        }))
+      }
+    } catch (e) {
+      console.error('AI Insight fetch failed', e)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="premium-card" style={{
-      padding: '20px', marginBottom: '24px',
+      padding: '24px', marginBottom: '24px',
       background: 'linear-gradient(135deg, rgba(232,149,109,0.1), rgba(125,184,247,0.1))',
       border: '1px solid rgba(232,149,109,0.2)',
       position: 'relative', overflow: 'hidden'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-        <div style={{ background: 'var(--accent)', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-          <TrendingUp size={14} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ background: 'var(--accent)', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+            <Sparkles size={16} />
+          </div>
+          <span style={{ fontSize: '14px', fontWeight: '800', color: 'var(--accent)' }}>AI 生活洞察</span>
         </div>
-        <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--accent)' }}>AI 生活洞察</span>
+
+        <button
+          onClick={fetchInsight}
+          disabled={loading}
+          className="btn-ghost"
+          style={{
+            fontSize: '11px', color: 'var(--accent)', fontWeight: '700',
+            padding: '4px 10px', borderRadius: '100px', border: '1px solid var(--accent)',
+            display: 'flex', alignItems: 'center', gap: '4px',
+            background: 'transparent'
+          }}
+        >
+          {loading ? <RefreshCw size={12} className="spin" /> : <RefreshCw size={12} />}
+          {insight ? '重新生成' : '开始洞察'}
+        </button>
       </div>
+
       {loading ? (
-        <div className="shimmer" style={{ height: '40px', borderRadius: '8px' }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div className="shimmer" style={{ height: '16px', borderRadius: '4px', width: '90%' }} />
+          <div className="shimmer" style={{ height: '16px', borderRadius: '4px', width: '70%' }} />
+        </div>
+      ) : insight ? (
+        <div className="fade-in">
+          <p style={{ fontSize: '14px', lineHeight: '1.7', color: 'var(--text-primary)', fontWeight: '500' }}>
+            {insight}
+          </p>
+          {lastUpdated > 0 && (
+            <p style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '12px' }}>
+              更新于: {new Date(lastUpdated).toLocaleString()}
+            </p>
+          )}
+        </div>
       ) : (
-        <p style={{ fontSize: '14px', lineHeight: '1.6', color: 'var(--text-primary)', fontWeight: '500' }}>
-          {insight || '正在感知你们的生活温度...'}
-        </p>
+        <div style={{ padding: '10px 0', textAlign: 'center' }}>
+          <p style={{ fontSize: '13px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+            点击按钮，让 AI 基于你们的消费数据提供生活建议...
+          </p>
+        </div>
       )}
     </div>
   )

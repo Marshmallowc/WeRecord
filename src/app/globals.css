@@ -182,7 +182,7 @@ body {
   justify-content: center;
   gap: 8px;
   padding: 10px 18px;
-  border-radius: var(--radius-sm);
+  border-radius: 100px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
