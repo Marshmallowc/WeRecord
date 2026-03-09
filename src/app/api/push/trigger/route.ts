@@ -9,14 +9,19 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-// Configure web-push with VAPID keys
-webpush.setVapidDetails(
-  'mailto:example@yourdomain.com', // Change this in production
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-)
-
 export async function POST(req: NextRequest) {
+  // Configure web-push with VAPID keys inside the handler to avoid build-time errors
+  if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+    console.error('VAPID keys are not set in environment variables')
+    return NextResponse.json({ error: 'Push notifications not configured' }, { status: 500 })
+  }
+
+  webpush.setVapidDetails(
+    'mailto:support@werecord.app',
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  )
+
   const { targetIdentity, title, body, url } = await req.json()
 
   if (!targetIdentity) {

@@ -116,11 +116,11 @@ export default function HomePage() {
         console.log('SW Registered');
 
         let sub = await reg.pushManager.getSubscription();
-        if (!sub) {
+        if (!sub && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
           try {
             sub = await reg.pushManager.subscribe({
               userVisibleOnly: true,
-              applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!)
+              applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY)
             });
           } catch (e) {
             console.error('Failed to subscribe to push', e);
