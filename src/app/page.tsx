@@ -1,65 +1,426 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
+import { useEffect, useRef, useState, useMemo } from 'react'
+import { useIdentity } from '@/context/IdentityContext'
+import { formatCurrency, formatRelativeDate } from '@/lib/utils'
+import {
+  ArrowUp, Gift, HandCoins, ChevronDown, ChevronUp, Check, Trash2,
+  Tag, Calendar, User, Search, Filter, Edit3, X, RefreshCw
+} from 'lucide-react'
+import { FeedSkeleton } from '@/components/RecordSkeleton'
+import { EditModal } from '@/components/EditModal'
+import useSWR, { mutate } from 'swr'
+
+const fetcher = (url: string) => fetch(url).then(res => res.json())
+
+interface AAItem {
+  id: string
+  name: string
+  amount: number
+  category: string | null
+}
+
+interface RecordItem {
+  id: string
+  record_type: 'gift' | 'aa'
+  created_at: string
+  date: string
+  source_text: string
+  category?: string | null
+  from_user?: string
+  to_user?: string
+  title?: string
+  amount?: number
+  description?: string
+  payer?: string
+  status?: 'pending' | 'settled'
+  total_amount?: number
+  my_share?: number
+  note?: string
+  aa_items?: AAItem[]
+}
+
+interface ParsedResult {
+  type: 'gift' | 'aa'
+  [key: string]: any
+}
+
+export default function HomePage() {
+  const { identity, partnerName } = useIdentity()
+  const [hasMounted, setHasMounted] = useState(false)
+  const [text, setText] = useState('')
+  const [isParsing, setIsParsing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [preview, setPreview] = useState<{ results: ParsedResult[]; source_text: string } | null>(null)
+
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [editingRecord, setEditingRecord] = useState<RecordItem | null>(null)
+
+  // Search & Filter State
+  const [searchInput, setSearchInput] = useState('')
+  const [search, setSearch] = useState('')
+  const [filterType, setFilterType] = useState<string>('')
+  const [filterCategory, setFilterCategory] = useState<string>('')
+  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // SWR for Records
+  const { data: recordsData, isLoading: isLoadingRecords, isValidating } = useSWR(
+    `/api/records?limit=40&search=${search}&type=${filterType}&category=${filterCategory}`,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 5000 }
+  )
+
+  // SWR for Categories
+  const { data: catData } = useSWR('/api/categories', fetcher)
+  const categories = catData?.data ?? []
+  const records = recordsData?.data ?? []
+  const mountedRef = useRef(false)
+
+  function showToast(msg: string, ok = true) {
+    setToast({ msg, ok })
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  useEffect(() => {
+    setHasMounted(true)
+    // SWR handles initial fetch and revalidation automatically
+  }, [])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput)
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [searchInput])
+
+  async function handleSubmit() {
+    if (!text.trim() || isParsing) return
+    setIsParsing(true)
+    setPreview(null)
+
+    try {
+      const res = await fetch('/api/ai-parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text.trim(), identity }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      // data.result is now an array
+      const results = Array.isArray(data.result) ? data.result : [data.result]
+      setPreview({ results, source_text: text.trim() })
+    } catch (err: any) {
+      showToast(err.message || 'AI 解析失败', false)
+    } finally {
+      setIsParsing(false)
+    }
+  }
+
+  async function handleSave() {
+    if (!preview) return
+    setIsSaving(true)
+    try {
+      const payload = preview.results.map(r => ({
+        type: r.type,
+        result: r,
+        source_text: preview.source_text
+      }))
+      const res = await fetch('/api/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) throw new Error()
+      setPreview(null)
+      setText('')
+      showToast(`成功入住 ${preview.results.length} 条记录`)
+      mutate(url => typeof url === 'string' && url.includes('/api/records'))
+    } catch {
+      showToast('保存失败', false)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function handleSettle(id: string) {
+    await fetch('/api/records', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, type: 'aa', status: 'settled' }),
+    })
+    mutate(url => typeof url === 'string' && url.includes('/api/records'))
+    showToast('已标记结清')
+  }
+
+  async function handleDelete(id: string, type: string) {
+    await fetch(`/api/records?id=${id}&type=${type}`, { method: 'DELETE' })
+    mutate(url => typeof url === 'string' && url.includes('/api/records'))
+    showToast('已删除')
+  }
+
+  function handleTextChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    setText(e.target.value)
+    const el = e.target
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 200) + 'px'
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div style={{ maxWidth: '100%', paddingBottom: '80px' }}>
+      {toast && (
+        <div style={{
+          position: 'fixed', top: '80px', left: '50%', transform: 'translateX(-50%)',
+          padding: '10px 24px', borderRadius: '100px', fontSize: '13px', fontWeight: '600',
+          background: toast.ok ? 'var(--green)' : 'var(--red)', color: '#fff',
+          zIndex: 2000, boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+          animation: 'scaleIn 0.3s ease',
+        }}>
+          {toast.msg}
+        </div>
+      )}
+
+      {/* Hero / Input Section */}
+      <div className="premium-card" style={{ padding: '20px', marginBottom: '24px' }}>
+        <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '14px', fontWeight: '600' }}>
+          记录新动态
+        </p>
+        <div style={{ position: 'relative' }}>
+          <textarea
+            ref={textareaRef}
+            className="input"
+            rows={2}
+            value={text}
+            onChange={handleTextChange}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                handleSubmit()
+              }
+            }}
+            placeholder={`今天买了两个冰淇淋，一共25元\n给${partnerName}买了一件外套，大概399`}
+            style={{ paddingRight: '48px', minHeight: '90px' }}
+            disabled={isParsing || !!preview}
+          />
+          <button
+            onClick={handleSubmit}
+            disabled={!text.trim() || isParsing || !!preview}
+            className="btn-primary"
+            style={{
+              position: 'absolute', right: '8px', bottom: '8px',
+              width: '40px', height: '40px', borderRadius: '12px',
+              padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}
+          >
+            {isParsing ? <div className="spinner" style={{ width: '16px', height: '16px' }} /> : <ArrowUp size={20} />}
+          </button>
+        </div>
+      </div>
+
+      {/* AI Preview */}
+      {preview && (
+        <div className="premium-card slide-up" style={{
+          padding: '20px', marginBottom: '24px',
+          border: '2px solid var(--accent)', background: 'var(--accent-bg)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+            <span style={{ fontWeight: '700' }}>AI 识别预览 ({preview.results.length})</span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
+            {preview.results.map((res, idx) => (
+              <div key={idx} style={{ background: 'var(--bg-card)', padding: '16px', borderRadius: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <div className="tag" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px' }}>
+                    {res.type === 'gift' ? <Gift size={12} /> : <HandCoins size={12} />}
+                    {res.type === 'gift' ? '礼物' : '支出'}
+                  </div>
+                  <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{res.category}</span>
+                </div>
+                <div style={{ fontSize: '15px', fontWeight: '600', marginBottom: '8px' }}>
+                  {res.type === 'gift' ? res.title : (res.items?.map((i: any) => i.name).join('、') || '未命名支出')}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                  <span>
+                    {res.type === 'gift'
+                      ? (res.from === identity ? '我送出的' : `${partnerName}送出的`)
+                      : (res.payer === identity ? '我付款' : `${partnerName}付款`)}
+                  </span>
+                  <span style={{ color: 'var(--accent)', fontWeight: '700' }}>
+                    {formatCurrency(Number(res.type === 'gift' ? res.amount : res.my_share) || 0)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button className="btn btn-secondary" onClick={() => setPreview(null)} style={{ flex: 1 }}>取消</button>
+            <button className="btn btn-primary" onClick={handleSave} disabled={isSaving} style={{ flex: 2 }}>
+              {isSaving ? '入库中...' : '确认全部入库'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Filters Bar */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', overflowX: 'auto', paddingBottom: '4px' }}>
+        <div style={{ position: 'relative', flex: 1, minWidth: '150px' }}>
+          <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <input
+            className="input"
+            placeholder="搜索记录..."
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+            style={{ paddingLeft: '34px', height: '40px', fontSize: '13px' }}
+          />
+        </div>
+        <select
+          className="input"
+          style={{ width: '100px', height: '40px', fontSize: '13px' }}
+          value={filterType}
+          onChange={e => setFilterType(e.target.value)}
+        >
+          <option value="">全部类型</option>
+          <option value="aa">AA支出</option>
+          <option value="gift">礼物记录</option>
+        </select>
+        <select
+          className="input"
+          style={{ width: '100px', height: '40px', fontSize: '13px' }}
+          value={filterCategory}
+          onChange={e => setFilterCategory(e.target.value)}
+        >
+          <option value="">全部分类</option>
+          {categories.map((c: any) => <option key={c.name} value={c.name}>{c.name}</option>)}
+        </select>
+      </div>
+
+      {/* Main Feed */}
+      <div style={{ minHeight: '400px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <h2 style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-secondary)' }}>最近动态</h2>
+          <button onClick={() => mutate(url => typeof url === 'string' && url.includes('/api/records'))} className="btn-ghost" style={{
+            display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '4px 8px'
+          }}>
+            <RefreshCw size={12} className={isValidating ? 'spin' : ''} /> 刷新
+          </button>
+        </div>
+
+        {isLoadingRecords ? (
+          <FeedSkeleton />
+        ) : records.length === 0 ? (
+          <div className="premium-card" style={{ padding: '60px 20px', textAlign: 'center', borderStyle: 'dashed' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>没有找到相关记录</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', opacity: isValidating ? 0.7 : 1, transition: 'opacity 0.2s' }}>
+            {records.map((r: RecordItem) => (
+              <RecordCard
+                key={r.id}
+                record={r}
+                expanded={expandedId === r.id}
+                onToggle={() => setExpandedId(expandedId === r.id ? null : r.id)}
+                onSettle={handleSettle}
+                onEdit={() => setEditingRecord(r)}
+                partnerName={partnerName}
+                identity={identity}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {editingRecord && (
+        <EditModal
+          record={editingRecord}
+          onClose={() => setEditingRecord(null)}
+          identity={identity!}
+          partnerName={partnerName}
+          onSave={(u) => {
+            mutate(url => typeof url === 'string' && url.includes('/api/records'))
+            showToast('已更新')
+          }}
+          onDelete={async (id, type) => {
+            await handleDelete(id, type)
+            setEditingRecord(null)
+          }}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      )}
     </div>
-  );
+  )
+}
+
+function RecordCard({ record, expanded, onToggle, onSettle, onEdit, partnerName, identity }: any) {
+  const isGift = record.record_type === 'gift'
+  const isMePayerTarget = isGift ? record.from_user === identity : record.payer === identity
+
+  return (
+    <div className="premium-card scale-in" style={{
+      overflow: 'hidden', padding: 0,
+      borderLeft: `5px solid ${isGift ? 'var(--accent)' : (isMePayerTarget ? 'var(--blue)' : 'var(--green)')}`,
+    }}>
+      <div style={{ padding: '16px', cursor: 'pointer' }} onClick={onToggle}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div style={{ flex: 1, minWidth: 0, paddingRight: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <span style={{
+                fontSize: '10px', fontWeight: '800', padding: '2px 6px', borderRadius: '4px',
+                background: isGift ? 'var(--accent-bg)' : (isMePayerTarget ? 'var(--blue-bg)' : 'var(--green-bg)'),
+                color: isGift ? 'var(--accent)' : (isMePayerTarget ? 'var(--blue)' : 'var(--green)')
+              }}>{isGift ? 'GIFT' : 'AA'}</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                {record.date}
+              </span>
+            </div>
+            <h3 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '4px' }}>
+              {isGift ? record.title : record.aa_items?.map((i: any) => i.name).join('、')}
+            </h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+              <User size={12} />
+              {isGift
+                ? (record.from_user === identity ? `我送给${partnerName}` : `${partnerName}送我的`)
+                : (record.payer === identity ? '我付的' : `${partnerName}付的`)
+              }
+            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '18px', fontWeight: '900', color: !isGift && record.status === 'settled' ? 'var(--text-muted)' : 'var(--text-primary)' }}>
+              {formatCurrency(isGift ? record.amount : record.my_share)}
+            </div>
+            {!isGift && (
+              <div style={{ fontSize: '10px', color: record.status === 'settled' ? 'var(--green)' : 'var(--text-muted)', fontWeight: '800' }}>
+                {record.status === 'settled' ? '已结清' : '待结清'}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {expanded && (
+        <div style={{ padding: '0 16px 16px', background: 'rgba(255,255,255,0.01)', borderTop: '1px solid var(--border)' }} className="fade-in">
+          <div style={{ padding: '16px 0', borderBottom: '1px solid var(--border)', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px', color: 'var(--text-muted)', fontSize: '12px' }}>
+              <Tag size={12} /> 分类: <span className="tag">{record.category || '未分类'}</span>
+            </div>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', fontStyle: 'italic', lineHeight: '1.5' }}>
+              "{record.source_text}"
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="btn btn-secondary" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); onEdit() }}>
+              <Edit3 size={14} /> 编辑
+            </button>
+            {!isGift && record.status === 'pending' && (
+              <button className="btn-primary" style={{ flex: 2, background: 'var(--green)', boxShadow: 'none' }} onClick={(e) => { e.stopPropagation(); onSettle(record.id) }}>
+                <Check size={14} /> 结清账单
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
