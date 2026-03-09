@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useIdentity } from '@/context/IdentityContext'
-import { User, Check, Camera, RefreshCw } from 'lucide-react'
+import { User, Check, Camera, RefreshCw, Bell, BellOff } from 'lucide-react'
+import { urlBase64ToUint8Array } from '@/lib/utils'
 
 const AVATARS = [
   'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
@@ -19,10 +20,21 @@ export default function SettingsPage() {
   const [selectedAvatar, setSelectedAvatar] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null)
+  const [isSubscribed, setIsSubscribed] = useState(false)
+  const [pushLoading, setPushLoading] = useState(false)
 
   // Sync with context when data arrives
   useEffect(() => {
     if (displayName) setName(displayName)
+
+    // Check push status
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+      navigator.serviceWorker.ready.then(reg => {
+        reg.pushManager.getSubscription().then(sub => {
+          setIsSubscribed(!!sub)
+        })
+      })
+    }
   }, [displayName])
 
   useEffect(() => {
@@ -57,6 +69,56 @@ export default function SettingsPage() {
   const switchIdentity = () => {
     setIdentity(identity === 'me' ? 'her' : 'me')
     window.location.reload() // Force reload to refresh context
+  }
+
+  const handlePushToggle = async () => {
+    if (pushLoading) return
+    setPushLoading(true)
+
+    try {
+      if (isSubscribed) {
+        // Unsubscribe logic (optional, but good for completeness)
+        const reg = await navigator.serviceWorker.ready
+        const sub = await reg.pushManager.getSubscription()
+        if (sub) {
+          await sub.unsubscribe()
+          // Optionally notify server to delete from DB
+          setIsSubscribed(false)
+          setMessage({ text: '已关闭通知', ok: true })
+        }
+      } else {
+        // Subscribe logic (REQUIRED for iOS to be triggered by tap)
+        const reg = await navigator.serviceWorker.ready
+        let sub = await reg.pushManager.getSubscription()
+
+        if (!sub) {
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!)
+          })
+        }
+
+        if (sub) {
+          const res = await fetch('/api/push/subscription', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identity, subscription: sub })
+          })
+          if (res.ok) {
+            setIsSubscribed(true)
+            setMessage({ text: '通知已成功开启！', ok: true })
+          } else {
+            throw new Error('Sync failed')
+          }
+        }
+      }
+    } catch (e: any) {
+      console.error('Push toggle failed', e)
+      setMessage({ text: e.name === 'NotAllowedError' ? '请在系统设置中允许通知权限' : '开启失败，请重试', ok: false })
+    } finally {
+      setPushLoading(false)
+      setTimeout(() => setMessage(null), 3000)
+    }
   }
 
   return (
@@ -149,6 +211,28 @@ export default function SettingsPage() {
 
       <div className="premium-card" style={{ padding: '24px' }}>
         <h3 style={{ fontSize: '14px', fontWeight: '800', marginBottom: '16px', color: 'var(--text-secondary)' }}>系统设置</h3>
+
+        {/* Push Notification Section */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid var(--border)' }}>
+          <div>
+            <p style={{ fontSize: '14px', fontWeight: '600' }}>手机实时通知</p>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>开启以接收对方的记账提醒</p>
+          </div>
+          <button
+            className="btn-ghost"
+            onClick={handlePushToggle}
+            disabled={pushLoading}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              color: isSubscribed ? 'var(--green)' : 'var(--accent)',
+              padding: '6px 12px', borderRadius: '100px', border: '1px solid'
+            }}
+          >
+            {pushLoading ? <RefreshCw size={14} className="spin" /> : (isSubscribed ? <Bell size={14} /> : <BellOff size={14} />)}
+            {isSubscribed ? '已开启' : '启用'}
+          </button>
+        </div>
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <p style={{ fontSize: '14px', fontWeight: '600' }}>身份切换</p>

@@ -2,14 +2,14 @@
 
 import { useIdentity } from '@/context/IdentityContext'
 import type { UserType } from '@/lib/supabase'
-import { Heart } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 
 export default function IdentitySelector() {
   const { setIdentity } = useIdentity()
 
-  const options: { id: UserType; label: string; icon: string; desc: string; color: string }[] = [
-    { id: 'me', label: '我', icon: '👦', desc: '记录我的视角与个人花销', color: 'var(--blue)' },
-    { id: 'her', label: '她', icon: '👧', desc: '记录她的视角与个人动态', color: 'var(--accent)' },
+  const options: { id: UserType; label: string; sub: string; color: string }[] = [
+    { id: 'me', label: 'PERSPECTIVE M', sub: 'The Origin / Primary User', color: '#7db8f7' },
+    { id: 'her', label: 'PERSPECTIVE F', sub: 'The Companion / Secondary User', color: '#e8956d' },
   ]
 
   return (
@@ -20,125 +20,147 @@ export default function IdentitySelector() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '24px',
-        background: 'radial-gradient(circle at top right, #1a1917, #0f0e0d)',
+        padding: '40px 24px',
+        backgroundColor: '#050505',
+        color: '#fff',
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
       }}
     >
-      {/* Decorative Orbs */}
+      {/* Immersive Noise / Grain Background */}
       <div style={{
-        position: 'absolute', top: '-10%', right: '-5%', width: '40%', height: '40%',
-        background: 'radial-gradient(circle, rgba(232,149,109,0.08) 0%, transparent 70%)',
-        zIndex: 0,
-      }} />
-      <div style={{
-        position: 'absolute', bottom: '-10%', left: '-5%', width: '40%', height: '40%',
-        background: 'radial-gradient(circle, rgba(125,184,247,0.08) 0%, transparent 70%)',
-        zIndex: 0,
+        position: 'absolute',
+        inset: 0,
+        opacity: 0.15,
+        pointerEvents: 'none',
+        mixBlendMode: 'overlay',
+        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
       }} />
 
-      <div className="scale-in" style={{ width: '100%', maxWidth: '400px', textAlign: 'center', zIndex: 1, position: 'relative' }}>
-        {/* Logo Section */}
-        <div style={{ marginBottom: '48px' }}>
-          <div
-            style={{
-              width: '80px',
-              height: '80px',
-              borderRadius: '24px',
-              background: 'linear-gradient(135deg, var(--accent), var(--accent-soft))',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 24px',
-              boxShadow: '0 12px 30px rgba(232,149,109,0.3)',
-              position: 'relative'
-            }}
-          >
-            <div style={{ position: 'absolute', inset: '4px', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '20px' }} />
-            <Heart size={36} fill="#fff" strokeWidth={0} />
-          </div>
-          <h1 style={{ fontSize: '32px', fontWeight: '900', color: 'var(--text-primary)', marginBottom: '8px', letterSpacing: '-1px' }}>
-            WeRecord
-          </h1>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '16px' }}>
-            <div style={{ height: '1px', width: '20px', background: 'var(--border-strong)' }} />
-            <span style={{ fontSize: '13px', color: 'var(--accent)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px' }}>
-              Couple Archive
-            </span>
-            <div style={{ height: '1px', width: '20px', background: 'var(--border-strong)' }} />
-          </div>
-          <p style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: '1.6', maxWidth: '280px', margin: '0 auto' }}>
-            精细化管理你们的共享支出、礼物与成长点滴
-          </p>
-        </div>
+      {/* Floating Ambient Light */}
+      <div style={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: '800px',
+        height: '800px',
+        background: 'radial-gradient(circle, rgba(232,149,109,0.03) 0%, transparent 60%)',
+        filter: 'blur(80px)',
+        zIndex: 0,
+        pointerEvents: 'none'
+      }} />
 
-        {/* Selection Box */}
-        <div className="glass" style={{
-          padding: '24px',
-          borderRadius: '24px',
-          border: '1px solid rgba(255,255,255,0.05)',
-          boxShadow: '0 20px 40px rgba(0,0,0,0.4)'
+      <header style={{ textAlign: 'center', marginBottom: '100px', zIndex: 1, letterSpacing: '0.2em' }}>
+        <h1 style={{
+          fontSize: '11px',
+          fontWeight: '500',
+          color: 'rgba(255,255,255,0.3)',
+          marginBottom: '20px',
+          textTransform: 'uppercase',
+          animation: 'fadeIn 2s ease-out'
         }}>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px', fontWeight: '600' }}>
-            HI，请选择你的初始角色
-          </p>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {options.map((opt) => (
-              <button
-                key={opt.id}
-                onClick={() => setIdentity(opt.id)}
-                className="premium-card"
-                style={{
-                  width: '100%',
-                  padding: '16px',
-                  background: 'var(--bg-secondary)',
-                  border: '1px solid var(--border)',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '16px',
-                  position: 'relative'
-                }}
-              >
-                <div
-                  style={{
-                    width: '52px',
-                    height: '52px',
-                    borderRadius: '16px',
-                    background: `linear-gradient(135deg, ${opt.color}20, ${opt.color}10)`,
-                    border: `1px solid ${opt.color}30`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '24px',
-                    flexShrink: 0,
-                  }}
-                >
-                  {opt.icon}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-primary)' }}>
-                    {opt.label}的账户
-                  </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                    {opt.desc}
-                  </div>
-                </div>
-                <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--bg-card)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: opt.color }} />
-                </div>
-              </button>
-            ))}
-          </div>
+          Identity Initialization Protocol
+        </h1>
+        <div style={{
+          fontSize: '42px',
+          fontWeight: '200',
+          lineHeight: '1',
+          color: '#fff',
+          animation: 'fadeIn 1.5s ease-out'
+        }}>
+          WeRecord<span style={{ color: '#e8956d', fontWeight: '900' }}>.</span>
         </div>
+      </header>
 
-        <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '32px', opacity: 0.6 }}>
-          身份数据仅本地存储，你可以随时在设置中切换
-        </p>
+      <div style={{ width: '100%', maxWidth: '360px', zIndex: 1 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: 'rgba(255,255,255,0.08)' }}>
+          {options.map((opt, index) => (
+            <button
+              key={opt.id}
+              onClick={() => setIdentity(opt.id)}
+              className="option-button"
+              style={{
+                all: 'unset',
+                cursor: 'pointer',
+                padding: '40px 28px',
+                background: '#0a0a0a',
+                display: 'flex',
+                flexDirection: 'column',
+                position: 'relative',
+                transition: 'background 0.4s ease, transform 0.4s ease',
+              }}
+            >
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '10px'
+              }}>
+                <span style={{
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  letterSpacing: '0.1em',
+                  color: '#fff'
+                }}>
+                  {opt.label}
+                </span>
+                <ArrowRight size={18} className="arrow-icon" style={{ opacity: 0.2, transition: 'all 0.4s ease' }} />
+              </div>
+              <span style={{
+                fontSize: '10px',
+                color: 'rgba(255,255,255,0.25)',
+                fontWeight: '400',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase'
+              }}>
+                {opt.sub}
+              </span>
+
+              {/* Animated Underline */}
+              <div className="hover-underline" style={{
+                position: 'absolute',
+                left: 0,
+                bottom: 0,
+                height: '1px',
+                width: '0',
+                background: opt.color,
+                transition: 'width 0.5s cubic-bezier(0.16, 1, 0.3, 1)'
+              }} />
+            </button>
+          ))}
+        </div>
       </div>
+
+      <footer style={{
+        marginTop: '120px',
+        zIndex: 1,
+        textAlign: 'center',
+        opacity: 0.15
+      }}>
+        <p style={{ fontSize: '9px', fontWeight: '400', letterSpacing: '0.25em', textTransform: 'uppercase' }}>
+          Encryption Active / Local Persistence
+        </p>
+      </footer>
+
+      <style jsx>{`
+        .option-button:hover {
+          background: #111 !important;
+        }
+        .option-button:hover .hover-underline {
+          width: 100% !important;
+        }
+        .option-button:hover .arrow-icon {
+          transform: translateX(6px);
+          opacity: 1 !important;
+          color: #fff;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   )
 }

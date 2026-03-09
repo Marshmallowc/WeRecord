@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { useIdentity } from '@/context/IdentityContext'
-import { formatCurrency, formatRelativeDate } from '@/lib/utils'
+import { formatCurrency, formatRelativeDate, urlBase64ToUint8Array } from '@/lib/utils'
 import {
   ArrowUp, Gift, HandCoins, ChevronDown, ChevronUp, Check, Trash2,
   Tag, Calendar, User, Search, Filter, Edit3, X, RefreshCw
@@ -12,21 +12,6 @@ import { EditModal } from '@/components/EditModal'
 import useSWR, { mutate } from 'swr'
 
 const fetcher = (url: string) => fetch(url).then(res => res.json())
-
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/\-/g, '+')
-    .replace(/_/g, '/');
-
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
 
 interface AAItem {
   id: string
@@ -112,27 +97,44 @@ export default function HomePage() {
 
     // Web Push Registration
     if ('serviceWorker' in navigator && 'PushManager' in window && identity) {
+      console.log('Push notification support detected. Registering SW...');
       navigator.serviceWorker.register('/sw.js').then(async (reg) => {
-        console.log('SW Registered');
+        console.log('Service Worker Registered successfully');
 
         let sub = await reg.pushManager.getSubscription();
         if (!sub && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
+          console.log('No existing subscription found. Requesting new one...');
           try {
             sub = await reg.pushManager.subscribe({
               userVisibleOnly: true,
               applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY)
             });
-          } catch (e) {
-            console.error('Failed to subscribe to push', e);
+            console.log('Successfully subscribed to Push Notifications!');
+          } catch (e: any) {
+            console.error('Failed to subscribe to push通知失败:', e);
+            if (e.name === 'NotAllowedError') {
+              console.warn('User denied notification permissions.');
+            }
           }
         }
 
         if (sub) {
-          await fetch('/api/push/subscription', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ identity, subscription: sub })
-          });
+          console.log('Syncing subscription to Supabase for identity:', identity);
+          try {
+            const res = await fetch('/api/push/subscription', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ identity, subscription: sub })
+            });
+            if (res.ok) {
+              console.log('Subscription synced successfully.');
+            } else {
+              const err = await res.json();
+              console.error('Server sync failed:', err);
+            }
+          } catch (err) {
+            console.error('Network error during sub sync:', err);
+          }
         }
       });
     }
