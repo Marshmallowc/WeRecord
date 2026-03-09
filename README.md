@@ -2,6 +2,8 @@
 
 WeRecord is a sophisticated financial management application designed for couples to track shared expenses, personal gifts, and mutual debt trajectory with high precision. The system integrates advanced analytical dashboards and AI-driven insights to transform raw transactional data into meaningful relationship milestones.
 
+English | [简体中文](README_zh.md)
+
 ## Technical Architecture
 
 ### Core Stack
