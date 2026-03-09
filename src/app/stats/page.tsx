@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useIdentity } from '@/context/IdentityContext'
 import { formatCurrency } from '@/lib/utils'
 import {
@@ -380,19 +380,20 @@ function RangeSelector({ range, setRange }: { range: string, setRange: (r: any) 
 function DailyTrendChart({ dailyTotals, range }: { dailyTotals: Record<string, number>, range: string }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
 
-  // Calculate days count
   const daysCount = range === 'all' ? 180 : parseInt(range)
+  const data = useMemo(() => {
+    const res = []
+    const today = new Date()
+    for (let i = daysCount - 1; i >= 0; i--) {
+      const d = new Date()
+      d.setDate(today.getDate() - i)
+      const key = d.toISOString().split('T')[0]
+      res.push({ key, amount: dailyTotals[key] || 0 })
+    }
+    return res
+  }, [dailyTotals, daysCount])
 
-  const data = []
-  const today = new Date()
-  for (let i = daysCount - 1; i >= 0; i--) {
-    const d = new Date()
-    d.setDate(today.getDate() - i)
-    const key = d.toISOString().split('T')[0]
-    data.push({ key, amount: dailyTotals[key] || 0 })
-  }
-
-  const max = Math.max(...data.map(d => d.amount), 100)
+  const max = useMemo(() => Math.max(...data.map(d => d.amount), 100), [data])
   const lastIndex = data.length - 1
   const selected = hoveredIndex !== null ? data[hoveredIndex] : data[lastIndex]
 
@@ -439,15 +440,16 @@ function DailyTrendChart({ dailyTotals, range }: { dailyTotals: Record<string, n
 function BalanceTrendChart({ data, partnerName, range }: { data: { date: string, balance: number }[], partnerName: string, range: string }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
 
-  // Filter data based on range
   const daysCount = range === 'all' ? 999 : parseInt(range)
-  const cutoffDate = new Date()
-  cutoffDate.setDate(cutoffDate.getDate() - daysCount)
-  const cutoffStr = cutoffDate.toISOString().split('T')[0]
+  const { filteredData, max } = useMemo(() => {
+    const cutoffDate = new Date()
+    cutoffDate.setDate(cutoffDate.getDate() - daysCount)
+    const cutoffStr = cutoffDate.toISOString().split('T')[0]
+    const fd = range === 'all' ? data : data.filter(d => d.date >= cutoffStr)
+    const m = Math.max(...fd.map(d => Math.abs(d.balance)), 10)
+    return { filteredData: fd, max: m }
+  }, [data, daysCount, range])
 
-  const filteredData = range === 'all' ? data : data.filter(d => d.date >= cutoffStr)
-
-  const max = Math.max(...filteredData.map(d => Math.abs(d.balance)), 10)
   const safeData = filteredData.length > 0 ? filteredData : [{ date: new Date().toISOString().split('T')[0], balance: 0 }]
   const selected = hoveredIndex !== null ? safeData[hoveredIndex] : safeData[safeData.length - 1]
 

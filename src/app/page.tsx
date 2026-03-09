@@ -315,7 +315,7 @@ export default function HomePage() {
             <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>没有找到相关记录</p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', opacity: isValidating ? 0.7 : 1, transition: 'opacity 0.2s' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {records.map((r: RecordItem) => (
               <RecordCard
                 key={r.id}

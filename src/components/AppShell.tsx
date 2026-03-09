@@ -21,11 +21,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', maxWidth: '520px', margin: '0 auto', background: 'var(--bg-primary)' }}>
       {/* Top bar - cleaner */}
-      <header style={{
+      <header className="glass" style={{
         padding: '16px 20px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         position: 'sticky', top: 0, zIndex: 40,
-        background: 'rgba(15,14,13,0.8)', backdropFilter: 'blur(20px)',
         borderBottom: '1px solid var(--border)',
       }}>
         <span style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
@@ -50,11 +49,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </main>
 
       {/* Bottom Tab Nav */}
-      <nav style={{
+      <nav className="glass" style={{
         display: 'flex', position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
         width: '100%', maxWidth: '520px',
         padding: '12px 10px calc(12px + env(safe-area-inset-bottom))',
-        background: 'rgba(15,14,13,0.9)', backdropFilter: 'blur(20px)',
         borderTop: '1px solid var(--border)',
         zIndex: 50,
       }}>

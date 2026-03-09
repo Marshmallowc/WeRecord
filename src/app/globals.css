@@ -241,6 +241,20 @@ body {
   box-shadow: 0 0 0 3px rgba(232, 149, 109, 0.1);
 }
 
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
 /* Loading spinner */
 .spinner {
   width: 20px;
@@ -257,4 +271,17 @@ body {
   border-radius: 6px;
   margin-bottom: 8px;
   background: var(--bg-secondary);
+}
+
+/* Optimize accessibility for mobile */
+@media (max-width: 600px) {
+  .glass {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+}
+
+.premium-card,
+.glass {
+  will-change: transform, opacity;
 }
