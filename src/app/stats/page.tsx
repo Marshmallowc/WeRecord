@@ -474,26 +474,32 @@ function DailyTrendChart({ dailyTotals, range }: { dailyTotals: Record<string, n
           <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{selected.key === data[lastIndex].key ? '今日' : selected.key}</div>
         </div>
       </div>
-      <div
-        style={{ height: '120px', display: 'flex', alignItems: 'flex-end', gap: daysCount > 30 ? '1px' : '3px' }}
-        onMouseLeave={() => setHoveredIndex(null)}
-      >
-        {data.map((d, i) => (
-          <div
-            key={i}
-            onMouseEnter={() => setHoveredIndex(i)}
-            style={{
-              flex: 1,
-              background: hoveredIndex === i ? 'var(--accent)' : 'var(--blue)',
-              height: `${(d.amount / max) * 100}%`,
-              borderRadius: '2px',
-              opacity: (hoveredIndex === i || (hoveredIndex === null && i === lastIndex)) ? 1 : 0.4,
-              transition: 'all 0.2s ease',
-              cursor: 'pointer'
-            }}
-          />
-        ))}
-      </div>
+      {data.every(d => d.amount === 0) ? (
+        <div style={{ height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
+          暂无数据
+        </div>
+      ) : (
+        <div
+          style={{ height: '120px', display: 'flex', alignItems: 'flex-end', gap: daysCount > 30 ? '1px' : '3px' }}
+          onMouseLeave={() => setHoveredIndex(null)}
+        >
+          {data.map((d, i) => (
+            <div
+              key={i}
+              onMouseEnter={() => setHoveredIndex(i)}
+              style={{
+                flex: 1,
+                background: hoveredIndex === i ? 'var(--accent)' : 'var(--blue)',
+                height: `${(d.amount / max) * 100}%`,
+                borderRadius: '2px',
+                opacity: (hoveredIndex === i || (hoveredIndex === null && i === lastIndex)) ? 1 : 0.4,
+                transition: 'all 0.2s ease',
+                cursor: 'pointer'
+              }}
+            />
+          ))}
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px', fontSize: '10px', color: 'var(--text-muted)' }}>
         <span>{range === 'all' ? '180天' : `${daysCount}天前`}</span>
         <span>今天</span>
@@ -538,32 +544,38 @@ function BalanceTrendChart({ data, partnerName, range }: { data: { date: string,
           </div>
         </div>
       </div>
-      <div
-        style={{ height: '120px', position: 'relative', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center' }}
-        onMouseLeave={() => setHoveredIndex(null)}
-      >
-        <div style={{ position: 'absolute', left: 0, right: 0, height: '1px', background: 'var(--border-strong)', opacity: 0.5 }} />
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: safeData.length > 30 ? '1px' : '4px', height: '100%', width: '100%' }}>
-          {safeData.map((d, i) => (
-            <div
-              key={i}
-              onMouseEnter={() => setHoveredIndex(i)}
-              style={{
-                flex: 1,
-                background: d.balance > 0 ? 'var(--green)' : 'var(--red)',
-                height: `${(Math.abs(d.balance) / max) * 50}%`,
-                alignSelf: d.balance > 0 ? 'flex-end' : 'flex-start',
-                marginBottom: d.balance > 0 ? '60px' : '0',
-                marginTop: d.balance < 0 ? '60px' : '0',
-                borderRadius: '1px',
-                opacity: (hoveredIndex === i || (hoveredIndex === null && i === safeData.length - 1)) ? 1 : 0.4,
-                transition: 'all 0.2s ease',
-                cursor: 'pointer'
-              }}
-            />
-          ))}
+      {safeData.every(d => d.balance === 0) ? (
+        <div style={{ height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
+          暂无数据
         </div>
-      </div>
+      ) : (
+        <div
+          style={{ height: '120px', position: 'relative', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center' }}
+          onMouseLeave={() => setHoveredIndex(null)}
+        >
+          <div style={{ position: 'absolute', left: 0, right: 0, height: '1px', background: 'var(--border-strong)', opacity: 0.5 }} />
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: safeData.length > 30 ? '1px' : '4px', height: '100%', width: '100%' }}>
+            {safeData.map((d, i) => (
+              <div
+                key={i}
+                onMouseEnter={() => setHoveredIndex(i)}
+                style={{
+                  flex: 1,
+                  background: d.balance > 0 ? 'var(--green)' : 'var(--red)',
+                  height: `${(Math.abs(d.balance) / max) * 50}%`,
+                  alignSelf: d.balance > 0 ? 'flex-end' : 'flex-start',
+                  marginBottom: d.balance > 0 ? '60px' : '0',
+                  marginTop: d.balance < 0 ? '60px' : '0',
+                  borderRadius: '1px',
+                  opacity: (hoveredIndex === i || (hoveredIndex === null && i === safeData.length - 1)) ? 1 : 0.4,
+                  transition: 'all 0.2s ease',
+                  cursor: 'pointer'
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '9px', color: 'var(--text-muted)' }}>
         <span>{range === 'all' ? '全部历史' : `${range}天内`}</span>
         <span style={{ color: 'var(--text-secondary)' }}>0 点线 (平衡)</span>
