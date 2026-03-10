@@ -126,7 +126,7 @@ export default function HomePage() {
             const res = await fetch('/api/push/subscription', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ identity, subscription: sub })
+              body: JSON.stringify({ identity, subscription: sub.toJSON() })
             });
             if (res.ok) {
               console.log('Subscription synced successfully.');

@@ -3,25 +3,45 @@ import { createClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+// Pre-check environment variables to avoid runtime crashes
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export async function POST(req: NextRequest) {
   try {
-    const { identity, subscription } = await req.json()
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Supabase configuration missing on server');
+      return NextResponse.json({ error: 'Supabase configuration missing on server' }, { status: 500 });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    let body;
+    try {
+      body = await req.json();
+    } catch (e) {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const { identity, subscription } = body;
+
     if (!identity || !subscription) {
-      return NextResponse.json({ error: 'Missing identity or subscription' }, { status: 400 })
+      return NextResponse.json({ error: 'Missing identity or subscription data' }, { status: 400 });
     }
 
-    const endpoint = subscription.endpoint;
+    // Handle both object and stringified subscription
+    const subObj = typeof subscription === 'string' ? JSON.parse(subscription) : subscription;
+    const endpoint = subObj.endpoint;
+
     if (!endpoint) {
-      return NextResponse.json({ error: 'Invalid subscription: missing endpoint' }, { status: 400 })
+      return NextResponse.json({
+        error: 'Invalid subscription: missing endpoint',
+        received: subObj
+      }, { status: 400 });
     }
 
-    // 1. Delete old one if exists for this identity (Simpler filter)
-    // We filter by user_identity to avoid complex JSONB path issues in .delete()
+    // 1. Delete old one if exists for this identity (Simple filter)
+    // This avoids duplicated subscriptions for the same user identity
     const { error: deleteError } = await supabase
       .from('push_subscriptions')
       .delete()
@@ -29,6 +49,7 @@ export async function POST(req: NextRequest) {
 
     if (deleteError) {
       console.error('Push sync: Delete error:', deleteError);
+      // Even if deletion fails, we return a clear error
       return NextResponse.json({
         error: deleteError.message || 'Database error during deletion',
         code: deleteError.code
@@ -38,7 +59,7 @@ export async function POST(req: NextRequest) {
     // 2. Insert new one
     const { error: insertError } = await supabase.from('push_subscriptions').insert({
       user_identity: identity,
-      subscription: typeof subscription === 'string' ? JSON.parse(subscription) : subscription
+      subscription: subObj
     })
 
     if (insertError) {
@@ -54,7 +75,8 @@ export async function POST(req: NextRequest) {
     console.error('Push sync: unexpected error:', err);
     return NextResponse.json({
       error: err.message || 'Unexpected server error',
-      details: err.toString()
+      details: err.toString(),
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
     }, { status: 500 })
   }
 }

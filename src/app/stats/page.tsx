@@ -128,9 +128,24 @@ export default function StatsPage() {
             </div>
 
             {trendEntries.length > 0 ? (
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', height: '180px', padding: '10px 0', overflowX: 'auto' }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'flex-end',
+                gap: '12px',
+                height: '180px',
+                padding: '10px 0',
+                overflowX: 'auto',
+                justifyContent: trendEntries.length === 1 ? 'center' : 'flex-start'
+              }}>
                 {trendEntries.map(([month, amount]) => (
-                  <div key={month} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '40px', height: '100%' }}>
+                  <div key={month} style={{
+                    flex: trendEntries.length === 1 ? '0 0 80px' : 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    minWidth: '40px',
+                    height: '100%'
+                  }}>
                     <div style={{ fontSize: '10px', fontWeight: '700', marginBottom: '6px', color: 'var(--text-secondary)' }}>
                       {amount > 1000 ? (amount / 1000).toFixed(1) + 'k' : amount.toFixed(0)}
                     </div>
@@ -550,17 +565,30 @@ function BalanceTrendChart({ data, partnerName, range }: { data: { date: string,
         </div>
       ) : (
         <div
-          style={{ height: '120px', position: 'relative', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center' }}
+          style={{
+            height: '120px',
+            position: 'relative',
+            borderBottom: '1px solid var(--border)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: safeData.length === 1 ? 'center' : 'flex-start'
+          }}
           onMouseLeave={() => setHoveredIndex(null)}
         >
           <div style={{ position: 'absolute', left: 0, right: 0, height: '1px', background: 'var(--border-strong)', opacity: 0.5 }} />
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: safeData.length > 30 ? '1px' : '4px', height: '100%', width: '100%' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'flex-end',
+            gap: safeData.length > 30 ? '1px' : '4px',
+            height: '100%',
+            width: safeData.length === 1 ? 'auto' : '100%'
+          }}>
             {safeData.map((d, i) => (
               <div
                 key={i}
                 onMouseEnter={() => setHoveredIndex(i)}
                 style={{
-                  flex: 1,
+                  flex: safeData.length === 1 ? '0 0 40px' : 1,
                   background: d.balance > 0 ? 'var(--green)' : 'var(--red)',
                   height: `${(Math.abs(d.balance) / max) * 50}%`,
                   alignSelf: d.balance > 0 ? 'flex-end' : 'flex-start',
