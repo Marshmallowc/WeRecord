@@ -28,9 +28,10 @@ export async function POST(req: NextRequest) {
 
     if (deleteError) {
       console.error('Push sync: Delete error:', deleteError);
-      // We continue anyway, or return error? Let's continue or return based on severity.
-      // Usually, if the table is missing, this will fail.
-      return NextResponse.json({ error: deleteError.message, details: deleteError }, { status: 500 });
+      return NextResponse.json({
+        error: deleteError.message || 'Database error during deletion',
+        details: deleteError
+      }, { status: 500 });
     }
 
     // 2. Insert new one

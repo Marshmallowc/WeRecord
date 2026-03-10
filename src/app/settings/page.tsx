@@ -15,9 +15,10 @@ const AVATARS = [
 ]
 
 export default function SettingsPage() {
-  const { identity, displayName, avatarUrl, refreshProfiles, setIdentity } = useIdentity()
+  const { identity, displayName, avatarUrl, alipayCode, refreshProfiles, setIdentity } = useIdentity()
   const [name, setName] = useState('')
   const [selectedAvatar, setSelectedAvatar] = useState('')
+  const [alipay, setAlipay] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null)
   const [isSubscribed, setIsSubscribed] = useState(false)
@@ -26,6 +27,9 @@ export default function SettingsPage() {
   // Sync with context when data arrives
   useEffect(() => {
     if (displayName) setName(displayName)
+    if (alipayCode) setAlipay(alipayCode)
+    if (avatarUrl) setSelectedAvatar(avatarUrl)
+    else if (!selectedAvatar && AVATARS.length > 0) setSelectedAvatar(AVATARS[0])
 
     // Check push status
     if ('serviceWorker' in navigator && 'PushManager' in window) {
@@ -35,12 +39,7 @@ export default function SettingsPage() {
         })
       })
     }
-  }, [displayName])
-
-  useEffect(() => {
-    if (avatarUrl) setSelectedAvatar(avatarUrl)
-    else if (!selectedAvatar && AVATARS.length > 0) setSelectedAvatar(AVATARS[0])
-  }, [avatarUrl])
+  }, [displayName, alipayCode, avatarUrl])
 
   const handleSave = async () => {
     setIsSaving(true)
@@ -53,6 +52,7 @@ export default function SettingsPage() {
           id: identity,
           display_name: name,
           avatar_url: selectedAvatar,
+          alipay_code: alipay,
         }),
       })
       if (!res.ok) throw new Error()
@@ -161,6 +161,22 @@ export default function SettingsPage() {
             onChange={(e) => setName(e.target.value)}
             placeholder="输入你的名字"
           />
+        </div>
+
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '8px', display: 'block', fontWeight: '600' }}>
+            支付宝收款码内容
+          </label>
+          <input
+            className="input"
+            value={alipay}
+            onChange={(e) => setAlipay(e.target.value)}
+            placeholder="粘贴你的支付宝收款码提取出的链接"
+            style={{ fontFamily: 'monospace', fontSize: '13px' }}
+          />
+          <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
+            提示：使用支付宝扫一扫你自己的永久收款码，点击“查看详情/链接”并复制，粘贴到此处。
+          </p>
         </div>
 
         <div style={{ marginBottom: '24px' }}>

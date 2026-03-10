@@ -70,13 +70,16 @@ CREATE INDEX IF NOT EXISTS idx_aa_bills_date ON aa_bills(date DESC);
 CREATE INDEX IF NOT EXISTS idx_aa_items_bill_id ON aa_items(bill_id);
 CREATE INDEX IF NOT EXISTS idx_aa_items_category ON aa_items(category);
 
--- 8. 个人资料表 (V4 新增)
+-- 8. 个人资料表
 CREATE TABLE IF NOT EXISTS profiles (
   id TEXT PRIMARY KEY, -- 'me' 或 'her'
   display_name TEXT DEFAULT '',
   avatar_url TEXT DEFAULT '',
+  alipay_code TEXT DEFAULT '', -- 支付宝收款链接
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- 如果表已存在，执行：ALTER TABLE profiles ADD COLUMN IF NOT EXISTS alipay_code TEXT DEFAULT '';
 
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "allow_all_profiles" ON profiles FOR ALL USING (true) WITH CHECK (true);

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { FeedSkeleton } from '@/components/RecordSkeleton'
 import { EditModal } from '@/components/EditModal'
+import { PaymentModal } from '@/components/PaymentModal'
 import useSWR, { mutate } from 'swr'
 
 const fetcher = (url: string) => fetch(url).then(res => res.json())
@@ -46,7 +47,7 @@ interface ParsedResult {
 }
 
 export default function HomePage() {
-  const { identity, partnerName, avatarUrl, partnerAvatarUrl } = useIdentity()
+  const { identity, partnerName, avatarUrl, partnerAvatarUrl, partnerAlipayCode } = useIdentity()
   const [hasMounted, setHasMounted] = useState(false)
   const [text, setText] = useState('')
   const [isParsing, setIsParsing] = useState(false)
@@ -55,6 +56,7 @@ export default function HomePage() {
 
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [editingRecord, setEditingRecord] = useState<RecordItem | null>(null)
+  const [paymentRecord, setPaymentRecord] = useState<RecordItem | null>(null)
 
   // Search & Filter State
   const [searchInput, setSearchInput] = useState('')
@@ -199,7 +201,7 @@ export default function HomePage() {
     }
   }
 
-  async function handleSettle(id: string) {
+  async function handleSettle(id: string, record?: RecordItem) {
     const keyFilter = (url: any) => typeof url === 'string' && url.includes('/api/records')
 
     // 1. Optimistic UI update
@@ -211,7 +213,7 @@ export default function HomePage() {
       }
     }, false)
 
-    showToast('已标记结清')
+    showToast('已完成结清')
 
     try {
       // 2. Network request
@@ -220,7 +222,27 @@ export default function HomePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, type: 'aa', status: 'settled' }),
       })
-      // 3. Final sync
+
+      // 3. Send Notification to Partner
+      if (record) {
+        const isMe = identity === 'me'
+        const targetIdentity = isMe ? 'her' : 'me'
+        const amount = identity === 'me' ? (record.my_share || 0) : ((record.total_amount || 0) - (record.my_share || 0))
+        const billName = record.aa_items?.map(i => i.name).join('、') || '一笔账单'
+
+        fetch('/api/push/trigger', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            targetIdentity,
+            title: '✅ 账单已结清',
+            body: `Ta 已经支付了「${billName}」的 ${amount}元，记得查收哦~`,
+            url: '/'
+          })
+        }).catch(err => console.error('Failed to notify partner', err))
+      }
+
+      // 4. Final sync
       mutate(keyFilter)
     } catch (err) {
       showToast('更新失败', false)
@@ -451,7 +473,7 @@ export default function HomePage() {
                 record={r}
                 expanded={expandedId === r.id}
                 onToggle={() => setExpandedId(expandedId === r.id ? null : r.id)}
-                onSettle={handleSettle}
+                onSettle={() => setPaymentRecord(r)}
                 onNudge={handleNudge}
                 onEdit={() => setEditingRecord(r)}
                 partnerName={partnerName}
@@ -478,6 +500,18 @@ export default function HomePage() {
             await handleDelete(id, type)
             setEditingRecord(null)
           }}
+        />
+      )}
+
+      {paymentRecord && (
+        <PaymentModal
+          isOpen={!!paymentRecord}
+          onClose={() => setPaymentRecord(null)}
+          amount={identity === 'me' ? (paymentRecord.my_share || 0) : ((paymentRecord.total_amount || 0) - (paymentRecord.my_share || 0))}
+          billName={paymentRecord.aa_items?.map(i => i.name).join('、') || '一笔账单'}
+          partnerName={partnerName}
+          alipayCode={partnerAlipayCode}
+          onConfirm={() => handleSettle(paymentRecord.id, paymentRecord)}
         />
       )}
     </div>
@@ -596,7 +630,7 @@ function RecordCard({ record, expanded, onToggle, onSettle, onNudge, onEdit, par
                   if (isMePayerTarget) {
                     onNudge(record);
                   } else {
-                    onSettle(record.id);
+                    onSettle();
                   }
                 }}
               >

@@ -7,6 +7,7 @@ interface Profile {
   id: string
   display_name: string
   avatar_url: string
+  alipay_code?: string
 }
 
 interface IdentityContextType {
@@ -16,8 +17,16 @@ interface IdentityContextType {
   partnerName: string
   avatarUrl: string
   partnerAvatarUrl: string
+  alipayCode: string
+  partnerAlipayCode: string
   refreshProfiles: () => Promise<void>
 }
+
+// 🚀 Module-level Prefetch: Initiates fetch as soon as the JS module is loaded,
+// outrunning the React component lifecycle.
+const profilesPrefetch = typeof window !== 'undefined'
+  ? fetch('/api/profiles').then(res => res.json()).catch(() => ({ data: [] }))
+  : Promise.resolve({ data: [] });
 
 const IdentityContext = createContext<IdentityContextType | null>(null)
 
@@ -32,14 +41,20 @@ export function IdentityProvider({ children }: { children: React.ReactNode }) {
       const { data } = await res.json()
       if (data) setProfiles(data)
     } catch (e) {
-      console.error('Failed to fetch profiles', e)
+      console.error('Failed to refresh profiles', e)
     }
   }
 
   useEffect(() => {
+    // 1. Sync identity immediately
     const stored = localStorage.getItem('werecord_identity') as UserType | null
     setIdentityState(stored)
-    fetchProfiles()
+
+    // 2. Consume the prefetched promise (often already resolved by now)
+    profilesPrefetch.then(resp => {
+      if (resp.data) setProfiles(resp.data)
+    })
+
     setMounted(true)
   }, [])
 
@@ -51,18 +66,24 @@ export function IdentityProvider({ children }: { children: React.ReactNode }) {
   const myProfile = profiles.find(p => p.id === identity)
   const partnerProfile = profiles.find(p => p.id !== identity && (p.id === 'me' || p.id === 'her'))
 
-  const displayName = myProfile?.display_name || (identity === 'me' ? '我' : '她')
-  const partnerName = partnerProfile?.display_name || (identity === 'me' ? '她' : '我')
+  // Safe defaults while loading or when data is missing
+  const displayName = myProfile?.display_name || (identity === 'me' ? '我' : (identity === 'her' ? '她' : '用户'))
+  const partnerName = partnerProfile?.display_name || (identity === 'me' ? '她' : (identity === 'her' ? '我' : 'Ta'))
   const avatarUrl = myProfile?.avatar_url || ''
   const partnerAvatarUrl = partnerProfile?.avatar_url || ''
-
-  if (!mounted) return null
+  const alipayCode = myProfile?.alipay_code || ''
+  const partnerAlipayCode = partnerProfile?.alipay_code || ''
 
   return (
     <IdentityContext.Provider value={{
       identity, setIdentity, displayName, partnerName,
-      avatarUrl, partnerAvatarUrl, refreshProfiles: fetchProfiles
+      avatarUrl, partnerAvatarUrl, alipayCode, partnerAlipayCode, refreshProfiles: fetchProfiles
     }}>
+      {/* 
+          Removing the blocking 'if (!mounted) return null' 
+          allows the app to show a meaningful state (at least the layout) 
+          immediately, providing a faster "First Meaningful Paint".
+      */}
       {children}
     </IdentityContext.Provider>
   )
