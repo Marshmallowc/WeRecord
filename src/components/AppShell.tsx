@@ -2,13 +2,13 @@
 
 import { useIdentity } from '@/context/IdentityContext'
 import IdentitySelector from './IdentitySelector'
-import { usePathname, useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { Home, BarChart2, Settings, User } from 'lucide-react'
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { identity, displayName, avatarUrl } = useIdentity()
   const pathname = usePathname()
-  const router = useRouter()
 
   if (!identity) return <IdentitySelector />
 
@@ -60,12 +60,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           const isActive = pathname === tab.href
           const Icon = tab.icon
           return (
-            <button
+            <Link
               key={tab.href}
-              onClick={() => router.push(tab.href)}
+              href={tab.href}
+              prefetch={true}
               style={{
                 flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
-                border: 'none', background: 'transparent', cursor: 'pointer',
+                textDecoration: 'none',
                 color: isActive ? 'var(--accent)' : 'var(--text-muted)',
                 transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
                 transform: isActive ? 'translateY(-2px)' : 'none',
@@ -79,7 +80,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
               </div>
               <span style={{ fontSize: '10px', fontWeight: isActive ? '700' : '500' }}>{tab.label}</span>
-            </button>
+            </Link>
           )
         })}
       </nav>
