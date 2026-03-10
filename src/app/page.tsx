@@ -200,19 +200,45 @@ export default function HomePage() {
   }
 
   async function handleSettle(id: string) {
-    await fetch('/api/records', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, type: 'aa', status: 'settled' }),
-    })
-    mutate(url => typeof url === 'string' && url.includes('/api/records'))
+    const keyFilter = (url: any) => typeof url === 'string' && url.includes('/api/records')
+
+    // 1. Optimistic UI update
+    mutate(keyFilter, (current: any) => {
+      if (!current?.data) return current
+      return {
+        ...current,
+        data: current.data.map((r: any) => r.id === id ? { ...r, status: 'settled' } : r)
+      }
+    }, false)
+
     showToast('已标记结清')
+
+    try {
+      // 2. Network request
+      await fetch('/api/records', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, type: 'aa', status: 'settled' }),
+      })
+      // 3. Final sync
+      mutate(keyFilter)
+    } catch (err) {
+      showToast('更新失败', false)
+      mutate(keyFilter)
+    }
   }
 
   async function handleNudge(record: RecordItem) {
-    const targetIdentity = identity === 'me' ? 'her' : 'me'
+    const isMe = identity === 'me'
+    const targetIdentity = isMe ? 'her' : 'me'
     const name = record.aa_items?.map(i => i.name).join('、') || '一笔账单'
-    const amount = record.total_amount! - (record.my_share || 0)
+
+    // Logic: amount is what the TARGET user owes
+    // If target is 'her' (I am 'me'), she owes total - my_share
+    // If target is 'me' (I am 'her'), I owe record.my_share
+    const amount = targetIdentity === 'her'
+      ? (record.total_amount! - (record.my_share || 0))
+      : (record.my_share || 0)
 
     try {
       showToast('正在向 Ta 发送提醒...')
@@ -238,9 +264,28 @@ export default function HomePage() {
   }
 
   async function handleDelete(id: string, type: string) {
-    await fetch(`/api/records?id=${id}&type=${type}`, { method: 'DELETE' })
-    mutate(url => typeof url === 'string' && url.includes('/api/records'))
+    const keyFilter = (url: any) => typeof url === 'string' && url.includes('/api/records')
+
+    // 1. Optimistic UI update
+    mutate(keyFilter, (current: any) => {
+      if (!current?.data) return current
+      return {
+        ...current,
+        data: current.data.filter((r: any) => r.id !== id)
+      }
+    }, false)
+
     showToast('已删除')
+
+    try {
+      // 2. Network request
+      await fetch(`/api/records?id=${id}&type=${type}`, { method: 'DELETE' })
+      // 3. Final sync
+      mutate(keyFilter)
+    } catch (err) {
+      showToast('删除失败', false)
+      mutate(keyFilter)
+    }
   }
 
   function handleTextChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
@@ -254,11 +299,12 @@ export default function HomePage() {
     <div style={{ maxWidth: '100%', paddingBottom: '80px' }}>
       {toast && (
         <div style={{
-          position: 'fixed', top: '80px', left: '50%', transform: 'translateX(-50%)',
+          position: 'fixed', top: '80px', left: '0', right: '0', margin: '0 auto',
+          width: 'max-content', maxWidth: '90%',
           padding: '10px 24px', borderRadius: '100px', fontSize: '13px', fontWeight: '600',
           background: toast.ok ? 'var(--green)' : 'var(--red)', color: '#fff',
           zIndex: 2000, boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
-          animation: 'scaleIn 0.3s ease',
+          animation: 'scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
         }}>
           {toast.msg}
         </div>
@@ -497,9 +543,17 @@ function RecordCard({ record, expanded, onToggle, onSettle, onNudge, onEdit, par
               {formatCurrency(displayAmount)}
             </div>
             {!isGift && (
-              <div style={{ fontSize: '10px', color: record.status === 'settled' ? 'var(--green)' : 'var(--text-muted)', fontWeight: '800' }}>
-                {record.status === 'settled' ? '已结清' : '待结清'}
-              </div>
+              <>
+                <div style={{ fontSize: '10px', color: record.status === 'settled' ? 'var(--green)' : 'var(--text-muted)', fontWeight: '800' }}>
+                  {record.status === 'settled'
+                    ? '已结清'
+                    : (isMePayerTarget ? `${partnerName} 待结清` : '我 待结清')
+                  }
+                </div>
+                <div style={{ fontSize: '9px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  总计 {formatCurrency(record.total_amount)}
+                </div>
+              </>
             )}
           </div>
         </div>

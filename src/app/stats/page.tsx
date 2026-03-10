@@ -50,6 +50,12 @@ export default function StatsPage() {
   const [tab, setTab] = useState<StatsTab>('trends')
   const [range, setRange] = useState<'7' | '30' | '90' | 'all'>('30')
 
+  const adjustedBalanceHistory = useMemo(() => {
+    if (!stats?.analytics?.balanceHistory) return []
+    if (identity === 'me') return stats.analytics.balanceHistory
+    return stats.analytics.balanceHistory.map(h => ({ ...h, balance: -h.balance }))
+  }, [stats?.analytics?.balanceHistory, identity])
+
   if (isLoading) return <StatsSkeleton />
   if (!stats) return null
 
@@ -111,7 +117,7 @@ export default function StatsPage() {
           <RangeSelector range={range} setRange={setRange} />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px', marginBottom: '20px' }}>
             <DailyTrendChart dailyTotals={analytics.dailyTotals} range={range} />
-            <BalanceTrendChart data={analytics.balanceHistory} partnerName={partnerName || ''} range={range} />
+            <BalanceTrendChart data={adjustedBalanceHistory} partnerName={partnerName || ''} range={range} />
           </div>
 
           {/* Monthly Trend Chart */}
