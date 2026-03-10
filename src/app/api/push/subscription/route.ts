@@ -20,29 +20,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid subscription: missing endpoint' }, { status: 400 })
     }
 
-    // 1. Delete old one if exists for this endpoint
+    // 1. Delete old one if exists for this identity (Simpler filter)
+    // We filter by user_identity to avoid complex JSONB path issues in .delete()
     const { error: deleteError } = await supabase
       .from('push_subscriptions')
       .delete()
-      .eq('subscription->>endpoint', endpoint);
+      .eq('user_identity', identity);
 
     if (deleteError) {
       console.error('Push sync: Delete error:', deleteError);
       return NextResponse.json({
         error: deleteError.message || 'Database error during deletion',
-        details: deleteError
+        code: deleteError.code
       }, { status: 500 });
     }
 
     // 2. Insert new one
     const { error: insertError } = await supabase.from('push_subscriptions').insert({
       user_identity: identity,
-      subscription
+      subscription: typeof subscription === 'string' ? JSON.parse(subscription) : subscription
     })
 
     if (insertError) {
       console.error('Push sync: Insert error:', insertError);
-      return NextResponse.json({ error: insertError.message, details: insertError }, { status: 500 })
+      return NextResponse.json({
+        error: insertError.message || 'Database error during insertion',
+        code: insertError.code
+      }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
@@ -50,7 +54,7 @@ export async function POST(req: NextRequest) {
     console.error('Push sync: unexpected error:', err);
     return NextResponse.json({
       error: err.message || 'Unexpected server error',
-      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+      details: err.toString()
     }, { status: 500 })
   }
 }
