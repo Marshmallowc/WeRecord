@@ -21,11 +21,8 @@ export async function POST(req: NextRequest) {
     if (type === 'gift') {
       const { from, to, title, amount, description, date, category } = result
       if (category) {
-        await fetch(`${new URL(req.url).origin}/api/categories`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: category })
-        })
+        // Direct database insert instead of internal fetch
+        await supabase.from('categories').upsert({ name: category }, { onConflict: 'name' })
       }
       const { data, error } = await supabase.from('gifts').insert([{
         from_user: from,
@@ -41,12 +38,11 @@ export async function POST(req: NextRequest) {
     } else if (type === 'aa') {
       const { payer, items: aaItems, total, my_share, note, date } = result
       const categories = Array.from(new Set(((aaItems || []) as any[]).map(i => i.category).filter(Boolean)))
-      await Promise.all(categories.map(cat =>
-        fetch(`${new URL(req.url).origin}/api/categories`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: cat })
-        })
-      ))
+
+      // Direct database insert for all categories
+      if (categories.length > 0) {
+        await supabase.from('categories').upsert(categories.map(cat => ({ name: cat })), { onConflict: 'name' })
+      }
 
       const { data: bill, error: billError } = await supabase.from('aa_bills').insert([{
         payer, status: 'pending',

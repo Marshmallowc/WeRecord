@@ -233,6 +233,28 @@ export default function SettingsPage() {
           </button>
         </div>
 
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid var(--border)' }}>
+          <div>
+            <p style={{ fontSize: '14px', fontWeight: '600' }}>通知故障修复</p>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>如果收不到通知或报错，尝试重置</p>
+          </div>
+          <button
+            className="btn-ghost"
+            onClick={async () => {
+              if (confirm('确定要重置通知服务吗？这将注销当前设备的所有推送设置并刷新页面。')) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (const reg of registrations) {
+                  await reg.unregister();
+                }
+                window.location.reload();
+              }
+            }}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}
+          >
+            <RefreshCw size={14} /> 重置服务
+          </button>
+        </div>
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <p style={{ fontSize: '14px', fontWeight: '600' }}>身份切换</p>
