@@ -6,11 +6,11 @@ import { User, Check, Camera, RefreshCw, Bell, BellOff } from 'lucide-react'
 import { urlBase64ToUint8Array } from '@/lib/utils'
 
 const AVATARS = [
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
+  'https://api.dicebear.com/9.x/adventurer/svg?seed=Maria',
+  'https://api.dicebear.com/9.x/adventurer/svg?seed=Eden',
+  'https://api.dicebear.com/9.x/adventurer/svg?seed=George',
   'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=Viviyan',
   'https://api.dicebear.com/7.x/avataaars/svg?seed=Bastian',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=Jasper',
   'https://api.dicebear.com/7.x/avataaars/svg?seed=Sasha',
 ]
 

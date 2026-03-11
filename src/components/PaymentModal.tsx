@@ -72,24 +72,36 @@ export function PaymentModal({
                   style={{
                     background: '#00A3EE', color: '#fff', border: 'none',
                     padding: '16px', borderRadius: '12px', fontSize: '15px', fontWeight: '700',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-                    boxShadow: '0 4px 15px rgba(0, 163, 238, 0.3)'
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                    boxShadow: '0 4px 15px rgba(0, 163, 238, 0.3)', width: '100%', cursor: 'pointer'
                   }}
                 >
-                  <img src="https://img.alicdn.com/tfs/TB1qEueazuSBuNjy1XcXXcYjFXa-200-200.png" style={{ width: '20px', height: '20px' }} alt="Alipay" />
-                  使用支付宝结清
+                  <div style={{
+                    width: '22px', height: '22px', background: '#fff', color: '#00A3EE',
+                    borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '13px', fontWeight: '900', flexShrink: 0
+                  }}>
+                    支
+                  </div>
+                  <span style={{ display: 'inline-block', lineHeight: 1 }}>使用支付宝结清</span>
                 </button>
                 <button
                   disabled
                   style={{
                     background: '#07C160', color: '#fff', border: 'none',
                     padding: '16px', borderRadius: '12px', fontSize: '15px', fontWeight: '700',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-                    opacity: 0.5, cursor: 'not-allowed'
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                    opacity: 0.5, cursor: 'not-allowed', width: '100%'
                   }}
                 >
-                  <img src="https://res.wx.qq.com/a/wx_fed/assets/res/NTI4MWU5.ico" style={{ width: '20px', height: '20px' }} alt="WeChat" />
-                  使用微信支付 (暂未开放)
+                  <div style={{
+                    width: '22px', height: '22px', background: '#fff', color: '#07C160',
+                    borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '13px', fontWeight: '900', flexShrink: 0
+                  }}>
+                    微
+                  </div>
+                  <span style={{ display: 'inline-block', lineHeight: 1 }}>使用微信支付 (暂未开放)</span>
                 </button>
               </div>
 

@@ -5,7 +5,7 @@ import { useIdentity } from '@/context/IdentityContext'
 import { formatCurrency, formatRelativeDate, urlBase64ToUint8Array } from '@/lib/utils'
 import {
   ArrowUp, Gift, HandCoins, ChevronDown, ChevronUp, Check, Trash2,
-  Tag, Calendar, User, Search, Filter, Edit3, X, RefreshCw
+  Tag, Calendar, User, Search, Filter, Edit3, X, RefreshCw, Activity
 } from 'lucide-react'
 import { FeedSkeleton } from '@/components/RecordSkeleton'
 import { EditModal } from '@/components/EditModal'
@@ -68,7 +68,7 @@ export default function HomePage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // SWR for Records - Optimized for depth and persistence
-  const { data: recordsData, isLoading: isLoadingRecords, isValidating } = useSWR(
+  const { data: recordsData, error: recordsError, isLoading: isLoadingRecords, isValidating } = useSWR(
     `/api/records?limit=40&search=${search}&type=${filterType}&category=${filterCategory}`,
     fetcher,
     {
@@ -80,13 +80,17 @@ export default function HomePage() {
   )
 
   // SWR for Categories - Rarely changes
-  const { data: catData } = useSWR('/api/categories', fetcher, {
+  const { data: catData, error: catError } = useSWR('/api/categories', fetcher, {
     revalidateOnFocus: false,
     revalidateIfStale: false,
     dedupingInterval: 60000 // 1 minute cache for category list
   })
   const categories = catData?.data ?? []
   const records = recordsData?.data ?? []
+
+  // Combine errors
+  const isNetworkError = !!recordsError || !!catError;
+
   const mountedRef = useRef(false)
 
   function showToast(msg: string, ok = true) {
@@ -122,21 +126,35 @@ export default function HomePage() {
 
         if (sub) {
           console.log('Syncing subscription to Supabase for identity:', identity);
-          try {
-            const res = await fetch('/api/push/subscription', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ identity, subscription: sub.toJSON() })
-            });
-            if (res.ok) {
-              console.log('Subscription synced successfully.');
-            } else {
-              const err = await res.json();
-              console.error('Server sync failed:', err);
+
+          // 真正的“静默重试”逻辑（指数退避算法 Exponential Backoff）
+          const syncSubscription = async (retryCount = 0) => {
+            try {
+              const res = await fetch('/api/push/subscription', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ identity, subscription: sub!.toJSON() }) // use sub! as it's checked above
+              });
+
+              if (res.ok) {
+                console.log('Subscription synced successfully.');
+              } else {
+                const err = await res.json();
+                throw new Error(err.error || 'Server sync failed');
+              }
+            } catch (err: any) {
+              if (retryCount < 3) { // 最大重试 3 次
+                const delayMs = Math.pow(2, retryCount) * 5000; // 分别等待 5秒、10秒、20秒
+                console.warn(`[Push Sync] Network issue, retrying in ${delayMs / 1000}s... (Attempt ${retryCount + 1}/3)`);
+                setTimeout(() => syncSubscription(retryCount + 1), delayMs);
+              } else {
+                // 彻底失败，静默放弃，不下发给用户任何弹窗
+                console.warn('[Push Sync] Failed after 3 retries, deferring to next page load.');
+              }
             }
-          } catch (err) {
-            console.error('Network error during sub sync:', err);
-          }
+          };
+
+          syncSubscription();
         }
       });
     }
@@ -459,8 +477,14 @@ export default function HomePage() {
           </button>
         </div>
 
-        {isLoadingRecords ? (
+        {isLoadingRecords && !isNetworkError && records.length === 0 ? (
           <FeedSkeleton />
+        ) : isNetworkError && records.length === 0 ? (
+          <div className="premium-card" style={{ padding: '60px 20px', textAlign: 'center', borderColor: 'var(--red)', background: 'var(--red-bg)' }}>
+            <Activity size={32} style={{ margin: '0 auto 16px', color: 'var(--red)', opacity: 0.8 }} />
+            <p style={{ color: 'var(--red)', fontSize: '15px', fontWeight: '800', marginBottom: '8px' }}>网络开小差了</p>
+            <p style={{ color: 'var(--red)', fontSize: '13px', opacity: 0.8 }}>正在拼命重连获取账单数据...</p>
+          </div>
         ) : records.length === 0 ? (
           <div className="premium-card" style={{ padding: '60px 20px', textAlign: 'center', borderStyle: 'dashed' }}>
             <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>没有找到相关记录</p>
