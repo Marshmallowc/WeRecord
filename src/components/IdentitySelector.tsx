@@ -3,9 +3,25 @@
 import { useIdentity } from '@/context/IdentityContext'
 import type { UserType } from '@/lib/supabase'
 import { ArrowRight } from 'lucide-react'
+import { setIdentityCookie } from '@/app/actions'
+import { useRouter } from 'next/navigation'
+import { useTransition } from 'react'
 
 export default function IdentitySelector() {
   const { setIdentity } = useIdentity()
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+
+  const handleSelect = (id: UserType) => {
+    // Set locally for immediate UI reaction
+    setIdentity(id)
+
+    // Set cookie and refresh server components
+    startTransition(async () => {
+      await setIdentityCookie(id)
+      router.refresh()
+    })
+  }
 
   const options: { id: UserType; label: string; sub: string; color: string }[] = [
     { id: 'me', label: 'PERSPECTIVE M', sub: 'The Origin / Primary User', color: '#7db8f7' },
@@ -79,7 +95,8 @@ export default function IdentitySelector() {
           {options.map((opt, index) => (
             <button
               key={opt.id}
-              onClick={() => setIdentity(opt.id)}
+              onClick={() => handleSelect(opt.id)}
+              disabled={isPending}
               className="option-button"
               style={{
                 all: 'unset',

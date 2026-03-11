@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import type { UserType } from '@/lib/supabase'
+import { setIdentityCookie } from '@/app/actions'
 
 interface Profile {
   id: string
@@ -30,10 +31,9 @@ const profilesPrefetch = typeof window !== 'undefined'
 
 const IdentityContext = createContext<IdentityContextType | null>(null)
 
-export function IdentityProvider({ children }: { children: React.ReactNode }) {
-  const [identity, setIdentityState] = useState<UserType | null>(null)
+export function IdentityProvider({ children, initialIdentity = null }: { children: React.ReactNode, initialIdentity?: UserType | null }) {
+  const [identity, setIdentityState] = useState<UserType | null>(initialIdentity)
   const [profiles, setProfiles] = useState<Profile[]>([])
-  const [mounted, setMounted] = useState(false)
 
   const fetchProfiles = async () => {
     try {
@@ -46,17 +46,23 @@ export function IdentityProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    // 1. Sync identity immediately
-    const stored = localStorage.getItem('werecord_identity') as UserType | null
-    setIdentityState(stored)
+    // 1. Sync identity (Support SSR prop + fallback to localStorage for migration)
+    if (!initialIdentity) {
+      const stored = localStorage.getItem('werecord_identity') as UserType | null
+      if (stored) {
+        setIdentityState(stored)
+        // 🔥 自动帮助老用户把 localStorage 迁移到 Cookie，这样下一次刷新就变成“秒开”了
+        setIdentityCookie(stored).catch(e => console.error('[IdentityContext] Migration error', e))
+      }
+    } else {
+      setIdentityState(initialIdentity)
+    }
 
     // 2. Consume the prefetched promise (often already resolved by now)
     profilesPrefetch.then(resp => {
       if (resp.data) setProfiles(resp.data)
     })
-
-    setMounted(true)
-  }, [])
+  }, [initialIdentity])
 
   const setIdentity = (id: UserType) => {
     localStorage.setItem('werecord_identity', id)

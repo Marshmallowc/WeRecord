@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { IdentityProvider } from '@/context/IdentityContext'
 import AppShell from '@/components/AppShell'
+import { cookies } from 'next/headers'
+import type { UserType } from '@/lib/supabase'
 
 export const metadata: Metadata = {
   title: 'WeRecord - 情侣账本',
@@ -17,11 +19,14 @@ export const viewport = {
   themeColor: '#0f0e0d',
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const cookieStore = await cookies()
+  const initialIdentity = (cookieStore.get('werecord_identity')?.value as UserType) || null
+
   return (
     <html lang="zh-CN">
       <head>
@@ -29,7 +34,7 @@ export default function RootLayout({
         <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL} />
       </head>
       <body suppressHydrationWarning>
-        <IdentityProvider>
+        <IdentityProvider initialIdentity={initialIdentity as any}>
           <AppShell>{children}</AppShell>
         </IdentityProvider>
       </body>
