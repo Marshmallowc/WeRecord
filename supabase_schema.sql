@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS gifts (
   category TEXT,
   source_text TEXT DEFAULT '',
   date DATE NOT NULL DEFAULT CURRENT_DATE,
+  image_urls TEXT[] DEFAULT '{}',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -33,6 +34,7 @@ CREATE TABLE IF NOT EXISTS aa_bills (
   source_text TEXT DEFAULT '',
   note TEXT,
   date DATE NOT NULL DEFAULT CURRENT_DATE,
+  image_urls TEXT[] DEFAULT '{}',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -59,6 +61,8 @@ CREATE POLICY "allow_all_aa_items" ON aa_items FOR ALL USING (true) WITH CHECK (
 -- 6. 已有数据库迁移（如果之前已建表，执行这些）
 -- ALTER TABLE aa_items ADD COLUMN IF NOT EXISTS category TEXT;
 -- ALTER TABLE gifts ADD COLUMN IF NOT EXISTS category TEXT;
+-- ALTER TABLE gifts ADD COLUMN IF NOT EXISTS image_urls TEXT[] DEFAULT '{}';
+-- ALTER TABLE aa_bills ADD COLUMN IF NOT EXISTS image_urls TEXT[] DEFAULT '{}';
 
 -- 7. 索引
 CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(name);
@@ -87,3 +91,7 @@ CREATE POLICY "allow_all_profiles" ON profiles FOR ALL USING (true) WITH CHECK (
 -- 初始化默认数据
 INSERT INTO profiles (id, display_name) VALUES ('me', '我') ON CONFLICT (id) DO NOTHING;
 INSERT INTO profiles (id, display_name) VALUES ('her', '她') ON CONFLICT (id) DO NOTHING;
+
+-- 9. 存储桶策略 (需要在创建 record_images 存储桶后执行)
+-- CREATE POLICY "Allow Public View" ON storage.objects FOR SELECT USING ( bucket_id = 'record_images' );
+-- CREATE POLICY "Allow Public Upload" ON storage.objects FOR INSERT WITH CHECK ( bucket_id = 'record_images' );

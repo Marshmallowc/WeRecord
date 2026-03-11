@@ -21,6 +21,9 @@ interface IdentityContextType {
   alipayCode: string
   partnerAlipayCode: string
   refreshProfiles: () => Promise<void>
+  pendingUploads: any[]
+  addPendingUpload: (upload: any) => void
+  removePendingUpload: (id: string) => void
 }
 
 // 🚀 Module-level Prefetch: Initiates fetch as soon as the JS module is loaded,
@@ -34,6 +37,7 @@ const IdentityContext = createContext<IdentityContextType | null>(null)
 export function IdentityProvider({ children, initialIdentity = null }: { children: React.ReactNode, initialIdentity?: UserType | null }) {
   const [identity, setIdentityState] = useState<UserType | null>(initialIdentity)
   const [profiles, setProfiles] = useState<Profile[]>([])
+  const [pendingUploads, setPendingUploads] = useState<any[]>([])
 
   const fetchProfiles = async () => {
     try {
@@ -69,6 +73,14 @@ export function IdentityProvider({ children, initialIdentity = null }: { childre
     setIdentityState(id)
   }
 
+  const addPendingUpload = (upload: any) => {
+    setPendingUploads(prev => [upload, ...prev])
+  }
+
+  const removePendingUpload = (id: string) => {
+    setPendingUploads(prev => prev.filter(u => u.id !== id))
+  }
+
   const myProfile = profiles.find(p => p.id === identity)
   const partnerProfile = profiles.find(p => p.id !== identity && (p.id === 'me' || p.id === 'her'))
 
@@ -83,7 +95,8 @@ export function IdentityProvider({ children, initialIdentity = null }: { childre
   return (
     <IdentityContext.Provider value={{
       identity, setIdentity, displayName, partnerName,
-      avatarUrl, partnerAvatarUrl, alipayCode, partnerAlipayCode, refreshProfiles: fetchProfiles
+      avatarUrl, partnerAvatarUrl, alipayCode, partnerAlipayCode, refreshProfiles: fetchProfiles,
+      pendingUploads, addPendingUpload, removePendingUpload
     }}>
       {/* 
           Removing the blocking 'if (!mounted) return null' 

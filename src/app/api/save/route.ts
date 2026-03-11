@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     if (!type || !result) continue
 
     if (type === 'gift') {
-      const { from, to, title, amount, description, date, category } = result
+      const { from, to, title, amount, description, date, category, image_urls } = result
       if (category) {
         // Direct database insert instead of internal fetch
         await supabase.from('categories').upsert({ name: category }, { onConflict: 'name' })
@@ -32,11 +32,12 @@ export async function POST(req: NextRequest) {
         description: description ?? null,
         category: category ?? null,
         source_text,
+        image_urls: image_urls ?? [],
         date: date ?? new Date().toISOString().split('T')[0],
       }]).select().single()
       if (!error) savedResults.push({ data, type: 'gift' })
     } else if (type === 'aa') {
-      const { payer, items: aaItems, total, my_share, note, date } = result
+      const { payer, items: aaItems, total, my_share, note, date, image_urls } = result
       const categories = Array.from(new Set(((aaItems || []) as any[]).map(i => i.category).filter(Boolean)))
 
       // Direct database insert for all categories
@@ -51,6 +52,7 @@ export async function POST(req: NextRequest) {
         // We need to save the complement (me's share) to DB.
         my_share: identity === 'her' ? (total - my_share) : my_share,
         source_text,
+        image_urls: image_urls ?? [],
         note: note ?? null, date: date ?? new Date().toISOString().split('T')[0],
       }]).select().single()
 

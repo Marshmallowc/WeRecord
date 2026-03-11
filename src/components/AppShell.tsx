@@ -4,7 +4,7 @@ import { useIdentity } from '@/context/IdentityContext'
 import IdentitySelector from './IdentitySelector'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, BarChart2, Settings, User } from 'lucide-react'
+import { Home, BarChart2, Settings, User, Aperture } from 'lucide-react'
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { identity, displayName, avatarUrl } = useIdentity()
@@ -15,6 +15,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const tabs = [
     { href: '/', label: '记录', icon: Home },
     { href: '/stats', label: '统计', icon: BarChart2 },
+    { href: '/moments', label: '动态', icon: Aperture },
     { href: '/settings', label: '设置', icon: Settings },
   ]
 

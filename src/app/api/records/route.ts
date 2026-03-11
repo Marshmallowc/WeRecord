@@ -16,8 +16,8 @@ export async function GET(req: NextRequest) {
   const payer = searchParams.get('payer')
   const type = searchParams.get('type') // 'gift' or 'aa'
 
-  let giftQuery = supabase.from('gifts').select('id, from_user, to_user, title, amount, description, category, source_text, date, created_at')
-  let billQuery = supabase.from('aa_bills').select('id, payer, status, total_amount, my_share, source_text, note, date, created_at, aa_items(id, name, amount, category)')
+  let giftQuery = supabase.from('gifts').select('id, from_user, to_user, title, amount, description, category, source_text, image_urls, date, created_at')
+  let billQuery = supabase.from('aa_bills').select('id, payer, status, total_amount, my_share, source_text, note, image_urls, date, created_at, aa_items(id, name, amount, category)')
 
   // Apply filters
   if (search) {

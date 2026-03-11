@@ -5,12 +5,14 @@ import { useIdentity } from '@/context/IdentityContext'
 import { formatCurrency, formatRelativeDate, urlBase64ToUint8Array } from '@/lib/utils'
 import {
   ArrowUp, Gift, HandCoins, ChevronDown, ChevronUp, Check, Trash2,
-  Tag, Calendar, User, Search, Filter, Edit3, X, RefreshCw, Activity
+  Tag, Calendar, User, Search, Filter, Edit3, X, RefreshCw, Activity, Image as ImageIcon
 } from 'lucide-react'
 import { FeedSkeleton } from '@/components/RecordSkeleton'
 import { EditModal } from '@/components/EditModal'
 import { PaymentModal } from '@/components/PaymentModal'
 import useSWR, { mutate } from 'swr'
+import imageCompression from 'browser-image-compression'
+import { supabase } from '@/lib/supabase'
 
 const fetcher = (url: string) => fetch(url).then(res => res.json())
 
@@ -39,6 +41,8 @@ interface RecordItem {
   my_share?: number
   note?: string
   aa_items?: AAItem[]
+  image_urls?: string[]
+  is_uploading?: boolean
 }
 
 interface ParsedResult {
@@ -47,12 +51,14 @@ interface ParsedResult {
 }
 
 export default function HomePage() {
-  const { identity, partnerName, avatarUrl, partnerAvatarUrl, partnerAlipayCode } = useIdentity()
+  const { identity, partnerName, avatarUrl, partnerAvatarUrl, partnerAlipayCode, pendingUploads, addPendingUpload, removePendingUpload } = useIdentity()
   const [hasMounted, setHasMounted] = useState(false)
   const [text, setText] = useState('')
   const [isParsing, setIsParsing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [preview, setPreview] = useState<{ results: ParsedResult[]; source_text: string } | null>(null)
+  const [images, setImages] = useState<File[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [editingRecord, setEditingRecord] = useState<RecordItem | null>(null)
@@ -87,6 +93,13 @@ export default function HomePage() {
   })
   const categories = catData?.data ?? []
   const records = recordsData?.data ?? []
+
+  // Dual-Track Rendering Synthesis!
+  // Prepend our global mock uploading records to the truth from the server.
+  const displayRecords = [...pendingUploads, ...records].filter(r => {
+    if (filterType && r.record_type !== filterType) return false
+    return true
+  })
 
   // Combine errors
   const isNetworkError = !!recordsError || !!catError;
@@ -210,31 +223,92 @@ export default function HomePage() {
 
   async function handleSave() {
     if (!preview) return
-    setIsSaving(true)
-    try {
-      const payload = {
-        identity,
-        items: preview.results.map(r => ({
-          type: r.type,
-          result: r,
-          source_text: preview.source_text
-        }))
-      }
-      const res = await fetch('/api/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      if (!res.ok) throw new Error()
-      setPreview(null)
-      setText('')
-      showToast(`成功入住 ${preview.results.length} 条记录`)
-      mutate(url => typeof url === 'string' && url.includes('/api/records'))
-    } catch {
-      showToast('保存失败', false)
-    } finally {
-      setIsSaving(false)
-    }
+
+    // 1. Snapshot the data for background task
+    const snapshotPreview = preview
+    const snapshotImages = [...images]
+    const currentIdentity = identity
+
+    // Give the local images temporary blob URLs so they can render instantly
+    const localBlobUrls = snapshotImages.map(f => URL.createObjectURL(f))
+
+    // 2. Build mock datasets for immediate UI feedback
+    const tempPrefix = `temp-${Date.now()}`
+    const mockRecords: RecordItem[] = preview.results.map((r, i) => ({
+      id: `${tempPrefix}-${i}`,
+      record_type: r.type,
+      created_at: new Date().toISOString(),
+      date: r.date || new Date().toISOString().split('T')[0],
+      source_text: preview.source_text,
+      category: r.category || '未分类',
+      from_user: r.from,
+      to_user: r.to,
+      title: r.title,
+      amount: r.amount,
+      payer: r.payer,
+      status: 'pending',
+      total_amount: r.total,
+      my_share: r.my_share,
+      aa_items: r.items,
+      image_urls: localBlobUrls, // Use local blob URLs immediately for the mock card
+      is_uploading: true, // Marker for temporary UI status
+    }))
+
+    // 3. Clear input and preview states immediately (Optimistic reset)
+    setPreview(null)
+    setText('')
+    setImages([])
+
+    // 4. Force inject mock records into the global Client State (Pending Uploads Queue)
+    mockRecords.forEach(m => addPendingUpload(m))
+    showToast('入库中...', true)
+
+      // 5. Fire off the background task asynchronously (no await)
+      ; (async () => {
+        try {
+          let uploadedUrls: string[] = []
+          if (snapshotImages.length > 0) {
+            for (const file of snapshotImages) {
+              const ext = file.name.split('.').pop() || 'jpg'
+              const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`
+              const path = `${new Date().getFullYear()}/${new Date().getMonth() + 1}/${fileName}`
+
+              const options = { maxSizeMB: 0.2, maxWidthOrHeight: 1200, useWebWorker: true }
+              const compressedFile = await imageCompression(file, options)
+
+              const { data, error } = await supabase.storage.from('record_images').upload(path, compressedFile)
+              if (error) console.error('Upload error', error)
+              if (data) uploadedUrls.push(`/${path}`)
+            }
+          }
+
+          const payload = {
+            identity: currentIdentity,
+            items: snapshotPreview.results.map(r => ({
+              type: r.type,
+              result: { ...r, image_urls: uploadedUrls },
+              source_text: snapshotPreview.source_text
+            }))
+          }
+
+          const res = await fetch('/api/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+          if (!res.ok) throw new Error()
+
+          showToast(`入库成功`)
+        } catch {
+          showToast('入库失败，请刷新后再试', false)
+        } finally {
+          // 6. Regardless of success/fail, clean up the global mock list
+          mockRecords.forEach(m => removePendingUpload(m.id))
+          // And hit the network to sync the true state
+          const keyFilter = (url: any) => typeof url === 'string' && url.includes('/api/records')
+          mutate(keyFilter)
+        }
+      })()
   }
 
   async function handleSettle(id: string, record?: RecordItem) {
@@ -353,6 +427,49 @@ export default function HomePage() {
     el.style.height = Math.min(el.scrollHeight, 200) + 'px'
   }
 
+  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    console.log('[DEBUG] handleImageSelect triggered')
+
+    if (!e.target.files) {
+      console.warn('[DEBUG] No e.target.files found in event payload')
+      showToast('图片读取异常: 没有收到文件流', false)
+      return
+    }
+
+    console.log('[DEBUG] Files selected count:', e.target.files.length)
+    if (e.target.files.length === 0) {
+      console.warn('[DEBUG] User canceled or OS returned empty file list')
+      return;
+    }
+
+    // Defensive copy to break the reference tie to the DOM element
+    const newFiles = Array.from(e.target.files)
+    console.log('[DEBUG] Files array extracted:', newFiles.map(f => ({
+      name: f.name,
+      size: Math.round(f.size / 1024) + 'KB',
+      type: f.type
+    })))
+
+    setImages((prev) => {
+      const combined = [...prev, ...newFiles]
+      if (combined.length > 9) {
+        showToast('每次最多只能附带 9 张图片哦', false)
+        console.warn('[DEBUG] Selected too many images, slicing down to 9')
+        return combined.slice(0, 9)
+      }
+      console.log('[DEBUG] State update dispatched. Next images total count:', combined.length)
+      return combined
+    })
+
+    // Reset input with a delay to completely avoid mobile OS race conditions
+    setTimeout(() => {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+        console.log('[DEBUG] Input value forcibly reset after 150ms delay')
+      }
+    }, 150)
+  }
+
   return (
     <div style={{ maxWidth: '100%', paddingBottom: '80px' }}>
       {toast && (
@@ -403,6 +520,53 @@ export default function HomePage() {
             {isParsing ? <div className="spinner" style={{ width: '16px', height: '16px' }} /> : <ArrowUp size={20} />}
           </button>
         </div>
+
+        {/* Toolbar Below Input */}
+        <div style={{ display: 'flex', marginTop: '12px', alignItems: 'center', gap: '8px' }}>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="btn-ghost"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '13px', borderRadius: '100px', background: 'var(--bg-secondary)' }}
+            disabled={isParsing || !!preview}
+          >
+            <ImageIcon size={16} /> 附加图片 ({images.length})
+          </button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImageSelect}
+            multiple
+            accept="image/*"
+            style={{ display: 'none' }}
+          />
+        </div>
+
+        {/* Selected Image Previews */}
+        {images.length > 0 && (
+          <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
+            {images.map((file, idx) => (
+              <div key={idx} style={{ position: 'relative', width: '60px', height: '60px' }}>
+                <img
+                  src={URL.createObjectURL(file)}
+                  alt="preview"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }}
+                />
+                <button
+                  disabled={isParsing || !!preview}
+                  onClick={() => setImages(prev => prev.filter((_, i) => i !== idx))}
+                  style={{
+                    position: 'absolute', top: '-6px', right: '-6px', width: '20px', height: '20px',
+                    background: 'var(--red)', color: '#fff', borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    border: 'none', cursor: 'pointer'
+                  }}
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* AI Preview */}
@@ -495,21 +659,21 @@ export default function HomePage() {
           </button>
         </div>
 
-        {isLoadingRecords && !isNetworkError && records.length === 0 ? (
+        {isLoadingRecords && !isNetworkError && displayRecords.length === 0 ? (
           <FeedSkeleton />
-        ) : isNetworkError && records.length === 0 ? (
+        ) : isNetworkError && displayRecords.length === 0 ? (
           <div className="premium-card" style={{ padding: '60px 20px', textAlign: 'center', borderColor: 'var(--red)', background: 'var(--red-bg)' }}>
             <Activity size={32} style={{ margin: '0 auto 16px', color: 'var(--red)', opacity: 0.8 }} />
             <p style={{ color: 'var(--red)', fontSize: '15px', fontWeight: '800', marginBottom: '8px' }}>网络开小差了</p>
             <p style={{ color: 'var(--red)', fontSize: '13px', opacity: 0.8 }}>正在拼命重连获取账单数据...</p>
           </div>
-        ) : records.length === 0 ? (
+        ) : displayRecords.length === 0 ? (
           <div className="premium-card" style={{ padding: '60px 20px', textAlign: 'center', borderStyle: 'dashed' }}>
             <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>没有找到相关记录</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {records.map((r: RecordItem) => (
+            {displayRecords.map((r: RecordItem) => (
               <RecordCard
                 key={r.id}
                 record={r}
@@ -575,10 +739,21 @@ function RecordCard({ record, expanded, onToggle, onSettle, onNudge, onEdit, par
     ? record.amount
     : (isMePayerTarget ? ((record.total_amount || 0) - effectiveMyShare) : effectiveMyShare)
 
+  let displayCategory = record.category
+  if (!displayCategory && record.aa_items && record.aa_items.length > 0) {
+    const categories = Array.from(new Set(record.aa_items.map((i: any) => i.category).filter(Boolean)))
+    if (categories.length > 0) {
+      displayCategory = categories.join('、')
+    }
+  }
+  displayCategory = displayCategory || '未分类'
+
   return (
     <div className="premium-card scale-in" style={{
       overflow: 'hidden', padding: 0,
       borderLeft: `5px solid ${isGift ? 'var(--accent)' : (isMePayerTarget ? 'var(--blue)' : 'var(--green)')}`,
+      opacity: record.is_uploading ? 0.6 : 1, // Visual indication for uploading state
+      pointerEvents: record.is_uploading ? 'none' : 'auto', // Prevent clicks on mock record
     }}>
       <div style={{ padding: '16px', cursor: 'pointer' }} onClick={onToggle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -620,16 +795,23 @@ function RecordCard({ record, expanded, onToggle, onSettle, onNudge, onEdit, par
             </div>
             {!isGift && (
               <>
-                <div style={{ fontSize: '10px', color: record.status === 'settled' ? 'var(--green)' : 'var(--text-muted)', fontWeight: '800' }}>
-                  {record.status === 'settled'
+                <div style={{ fontSize: '10px', color: record.is_uploading ? 'var(--blue)' : (record.status === 'settled' ? 'var(--green)' : 'var(--text-muted)'), fontWeight: '800' }}>
+                  {record.is_uploading ? '入库中...' : (record.status === 'settled'
                     ? '已结清'
-                    : (isMePayerTarget ? `${partnerName} 待结清` : '我 待结清')
+                    : (isMePayerTarget ? `${partnerName} 待结清` : '我 待结清'))
                   }
                 </div>
-                <div style={{ fontSize: '9px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  总计 {formatCurrency(record.total_amount)}
-                </div>
+                {!record.is_uploading && (
+                  <div style={{ fontSize: '9px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    总计 {formatCurrency(record.total_amount)}
+                  </div>
+                )}
               </>
+            )}
+            {isGift && record.is_uploading && (
+              <div style={{ fontSize: '10px', color: 'var(--blue)', fontWeight: '800', marginTop: '4px' }}>
+                入库中...
+              </div>
             )}
           </div>
         </div>
@@ -639,7 +821,7 @@ function RecordCard({ record, expanded, onToggle, onSettle, onNudge, onEdit, par
         <div style={{ padding: '0 16px 16px', background: 'rgba(255,255,255,0.01)', borderTop: '1px solid var(--border)' }} className="fade-in">
           <div style={{ padding: '16px 0', borderBottom: '1px solid var(--border)', marginBottom: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px', color: 'var(--text-muted)', fontSize: '12px' }}>
-              <Tag size={12} /> 分类: <span className="tag">{record.category || '未分类'}</span>
+              <Tag size={12} /> 分类: <span className="tag">{displayCategory}</span>
             </div>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', fontStyle: 'italic', lineHeight: '1.5' }}>
               "{record.source_text}"

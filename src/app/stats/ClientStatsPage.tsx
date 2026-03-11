@@ -37,7 +37,7 @@ interface StatsData {
 
 type StatsTab = 'aa' | 'gifts' | 'trends'
 
-export default function ClientStatsPage({ fallbackData }: { fallbackData: StatsData }) {
+export default function ClientStatsPage({ fallbackData }: { fallbackData?: StatsData }) {
   const { identity, partnerName } = useIdentity()
   const fetcher = (url: string) => fetch(url).then(r => r.json())
   const { data: stats, isLoading } = useSWR<StatsData>('/api/stats', fetcher, {
