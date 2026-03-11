@@ -107,55 +107,73 @@ export default function HomePage() {
       navigator.serviceWorker.register('/sw.js').then(async (reg) => {
         console.log('Service Worker Registered successfully');
 
-        let sub = await reg.pushManager.getSubscription();
-        if (!sub && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
-          console.log('No existing subscription found. Requesting new one...');
-          try {
-            sub = await reg.pushManager.subscribe({
-              userVisibleOnly: true,
-              applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY)
-            });
-            console.log('Successfully subscribed to Push Notifications!');
-          } catch (e: any) {
-            console.error('Failed to subscribe to push通知失败:', e);
-            if (e.name === 'NotAllowedError') {
-              console.warn('User denied notification permissions.');
+        try {
+          // IMPORTANT: Wait for the service worker to be active before subscribing
+          const readyReg = await navigator.serviceWorker.ready;
+
+          let sub = await readyReg.pushManager.getSubscription();
+          if (!sub && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
+            console.log('No existing subscription found. Requesting new one...');
+            try {
+              sub = await readyReg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY)
+              });
+              console.log('Successfully subscribed to Push Notifications!');
+            } catch (e: any) {
+              console.error('Failed to subscribe to push通知失败:', e);
+              if (e.name === 'NotAllowedError') {
+                console.warn('User denied notification permissions.');
+              }
             }
           }
-        }
 
-        if (sub) {
-          console.log('Syncing subscription to Supabase for identity:', identity);
+          if (sub) {
+            console.log('Syncing subscription to Supabase for identity:', identity);
 
-          // 真正的“静默重试”逻辑（指数退避算法 Exponential Backoff）
-          const syncSubscription = async (retryCount = 0) => {
-            try {
-              const res = await fetch('/api/push/subscription', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ identity, subscription: sub!.toJSON() }) // use sub! as it's checked above
-              });
+            const subJson = sub.toJSON();
+            const subStr = JSON.stringify(subJson);
+            const cacheKey = `push_sub_${identity}`;
 
-              if (res.ok) {
-                console.log('Subscription synced successfully.');
-              } else {
-                const err = await res.json();
-                throw new Error(err.error || 'Server sync failed');
-              }
-            } catch (err: any) {
-              if (retryCount < 3) { // 最大重试 3 次
-                const delayMs = Math.pow(2, retryCount) * 5000; // 分别等待 5秒、10秒、20秒
-                console.warn(`[Push Sync] Network issue, retrying in ${delayMs / 1000}s... (Attempt ${retryCount + 1}/3)`);
-                setTimeout(() => syncSubscription(retryCount + 1), delayMs);
-              } else {
-                // 彻底失败，静默放弃，不下发给用户任何弹窗
-                console.warn('[Push Sync] Failed after 3 retries, deferring to next page load.');
-              }
+            if (localStorage.getItem(cacheKey) === subStr) {
+              console.log('Subscription already synced (cached locally). Skipping network request.');
+            } else {
+              // 真正的“静默重试”逻辑（指数退避算法 Exponential Backoff）
+              const syncSubscription = async (retryCount = 0) => {
+                try {
+                  const res = await fetch('/api/push/subscription', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ identity, subscription: subJson })
+                  });
+
+                  if (res.ok) {
+                    console.log('Subscription synced successfully.');
+                    localStorage.setItem(cacheKey, subStr);
+                  } else {
+                    const err = await res.json();
+                    throw new Error(err.error || 'Server sync failed');
+                  }
+                } catch (err: any) {
+                  if (retryCount < 3) { // 最大重试 3 次
+                    const delayMs = Math.pow(2, retryCount) * 5000; // 分别等待 5秒、10秒、20秒
+                    console.warn(`[Push Sync] Network issue, retrying in ${delayMs / 1000}s... (Attempt ${retryCount + 1}/3)`);
+                    setTimeout(() => syncSubscription(retryCount + 1), delayMs);
+                  } else {
+                    // 彻底失败，静默放弃，不下发给用户任何弹窗
+                    console.warn('[Push Sync] Failed after 3 retries, deferring to next page load.');
+                  }
+                }
+              };
+
+              syncSubscription();
             }
-          };
-
-          syncSubscription();
+          }
+        } catch (e) {
+          console.error('Failed to initialize push subscription:', e);
         }
+      }).catch(err => {
+        console.error('Service Worker registration failed:', err);
       });
     }
   }, [identity])
