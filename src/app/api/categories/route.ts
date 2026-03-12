@@ -1,42 +1,52 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
-// GET: list all categories
+// GET: list all categories for this couple + global defaults
 export async function GET() {
-  const { data, error } = await supabase
-    .from('categories')
-    .select('*')
-    .order('created_at', { ascending: true })
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabase.from('profiles').select('couple_id').eq('id', user.id).single()
+  const coupleId = profile?.couple_id
+
+  let query = supabase.from('categories').select('*')
+  
+  if (coupleId) {
+    query = query.or(`couple_id.is.null,couple_id.eq.${coupleId}`)
+  } else {
+    query = query.is('couple_id', null)
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ data: data ?? [] })
 }
 
-// POST: upsert category by name (returns existing or creates new)
+// POST: upsert category by name for this couple
 export async function POST(req: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabase.from('profiles').select('couple_id').eq('id', user.id).single()
+  if (!profile?.couple_id) return NextResponse.json({ error: '请先绑定伙伴' }, { status: 403 })
+
   const { name, color } = await req.json()
   if (!name) return NextResponse.json({ error: 'Missing name' }, { status: 400 })
 
-  // Check if exists
-  const { data: existing } = await supabase
-    .from('categories')
-    .select('*')
-    .eq('name', name)
-    .single()
-
-  if (existing) return NextResponse.json({ data: existing, created: false })
-
-  // Create new
+  // Upsert for this couple
   const { data, error } = await supabase
     .from('categories')
-    .insert([{ name, color: color ?? categoryColor(name) }])
+    .upsert({ 
+      name, 
+      couple_id: profile.couple_id,
+      color: color ?? categoryColor(name) 
+    }, { onConflict: 'couple_id, name' })
     .select()
     .single()
 

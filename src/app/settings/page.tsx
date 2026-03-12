@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useIdentity } from '@/context/IdentityContext'
-import { User, Check, Camera, RefreshCw, Bell, BellOff } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { User, Check, Camera, RefreshCw, Bell, BellOff, LogOut, Link2, Copy, Send } from 'lucide-react'
 import { urlBase64ToUint8Array } from '@/lib/utils'
 
 const AVATARS = [
@@ -15,7 +16,8 @@ const AVATARS = [
 ]
 
 export default function SettingsPage() {
-  const { identity, displayName, avatarUrl, alipayCode, refreshProfiles, setIdentity } = useIdentity()
+  const { identity, profile, user, displayName, avatarUrl, alipayCode, refreshProfiles, partnerProfile, signOut } = useIdentity()
+  const supabase = createClient()
   const [name, setName] = useState('')
   const [selectedAvatar, setSelectedAvatar] = useState('')
   const [alipay, setAlipay] = useState('')
@@ -23,6 +25,14 @@ export default function SettingsPage() {
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null)
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [pushLoading, setPushLoading] = useState(false)
+
+  // Binding State
+  const [inviteCode, setInviteCode] = useState('')
+  const [inputCode, setInputCode] = useState('')
+  const [isBinding, setIsBinding] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
+  const hasFetchedInviteCode = useRef(false)
 
   // Sync with context when data arrives
   useEffect(() => {
@@ -49,7 +59,7 @@ export default function SettingsPage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: identity,
+          id: user?.id, // ✅ 使用 Auth 提供的绝对可靠的 UUID
           display_name: name,
           avatar_url: selectedAvatar,
           alipay_code: alipay,
@@ -66,10 +76,63 @@ export default function SettingsPage() {
     }
   }
 
-  const switchIdentity = () => {
-    setIdentity(identity === 'me' ? 'her' : 'me')
-    window.location.reload() // Force reload to refresh context
+  const fetchInviteCode = async () => {
+    try {
+      const res = await fetch('/api/invitation')
+      const data = await res.json()
+      if (data.code) setInviteCode(data.code)
+    } catch (e) {
+      console.error('Failed to fetch invite code', e)
+    }
   }
+
+  const handleJoin = async () => {
+    if (!inputCode || isBinding) return
+    setIsBinding(true)
+    try {
+      const res = await fetch('/api/invitation/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: inputCode })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      
+      setMessage({ text: '双方绑定成功！同步中...', ok: true })
+      await refreshProfiles()
+      setTimeout(() => window.location.reload(), 1500)
+    } catch (e: any) {
+      setMessage({ text: e.message || '绑定失败', ok: false })
+    } finally {
+      setIsBinding(false)
+    }
+  }
+
+  const handleUpdatePassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      setMessage({ text: '密码长度至少为 6 位', ok: false })
+      return
+    }
+    setIsUpdatingPassword(true)
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) throw error
+      setMessage({ text: '密码设置成功！下次可直接通过密码登录', ok: true })
+      setNewPassword('')
+    } catch (e: any) {
+      setMessage({ text: e.message || '设置失败', ok: false })
+    } finally {
+      setIsUpdatingPassword(false)
+    }
+  }
+
+  useEffect(() => {
+    // 只有在 user 加载完成、确定没有绑定关系、且本次页面生命周期内还没抓取过邀请码时才请求
+    if (user && !profile?.couple_id && !hasFetchedInviteCode.current) {
+      hasFetchedInviteCode.current = true
+      fetchInviteCode()
+    }
+  }, [user, profile?.couple_id])
 
   const handlePushToggle = async () => {
     if (pushLoading) return
@@ -271,13 +334,90 @@ export default function SettingsPage() {
           </button>
         </div>
 
+        <div style={{ marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid var(--border)' }}>
+          <h4 style={{ fontSize: '13px', fontWeight: '700', marginBottom: '12px', color: 'var(--text-muted)' }}>账户密码</h4>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input 
+              type="password"
+              className="input" 
+              placeholder="设置新密码 (至少6位)" 
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              style={{ flex: 1 }}
+            />
+            <button 
+              className="btn btn-primary" 
+              onClick={handleUpdatePassword}
+              disabled={isUpdatingPassword || !newPassword}
+              style={{ width: '80px', padding: 0, fontSize: '12px' }}
+            >
+              {isUpdatingPassword ? <RefreshCw className="spin" size={16} /> : '更新'}
+            </button>
+          </div>
+          <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
+            提示：设置密码后，下次登录可不通过邮箱链接直接进入。
+          </p>
+        </div>
+
+        <div style={{ marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid var(--border)' }}>
+          <h4 style={{ fontSize: '13px', fontWeight: '700', marginBottom: '12px', color: 'var(--text-muted)' }}>伙伴绑定</h4>
+          
+          {profile?.couple_id ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--bg-secondary)', padding: '12px', borderRadius: '12px' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '12px', overflow: 'hidden', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {partnerProfile?.avatar_url ? <img src={partnerProfile.avatar_url} style={{ width: '100%' }} /> : <User color="#fff" />}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '14px', fontWeight: '700' }}>已绑定：{partnerProfile?.display_name || '另一半'}</div>
+                <div style={{ fontSize: '11px', color: 'var(--green)' }}>● 空间同步中</div>
+              </div>
+              <Link2 size={16} color="var(--green)" />
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ background: 'var(--bg-secondary)', padding: '16px', borderRadius: '14px', textAlign: 'center' }}>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>我的邀请码 (24h有效)</p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <code style={{ fontSize: '24px', fontWeight: '900', color: 'var(--accent)', letterSpacing: '4px' }}>
+                    {inviteCode || '......'}
+                  </code>
+                  <button onClick={() => {
+                    navigator.clipboard.writeText(inviteCode)
+                    setMessage({ text: '已复制邀请码', ok: true })
+                  }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                    <Copy size={16} />
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input 
+                  className="input" 
+                  placeholder="输入对方的邀请码" 
+                  value={inputCode}
+                  onChange={e => setInputCode(e.target.value.toUpperCase())}
+                  style={{ flex: 1, textTransform: 'uppercase', letterSpacing: '2px' }}
+                />
+                <button 
+                  className="btn-primary" 
+                  onClick={handleJoin}
+                  disabled={isBinding || !inputCode}
+                  style={{ width: '80px', padding: 0 }}
+                >
+                  {isBinding ? <RefreshCw className="spin" size={18} /> : '加入'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <p style={{ fontSize: '14px', fontWeight: '600' }}>身份切换</p>
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>当前身份：{displayName}</p>
+            <p style={{ fontSize: '14px', fontWeight: '600' }}>当前账号</p>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{user?.email}</p>
           </div>
-          <button className="btn-ghost" onClick={switchIdentity} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <RefreshCw size={14} /> 切换
+          <button className="btn-ghost" onClick={signOut} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--red)' }}>
+            <LogOut size={14} /> 退出登录
           </button>
         </div>
       </div>

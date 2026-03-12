@@ -1,17 +1,38 @@
--- WeRecord 情侣账本 数据库建表 SQL
--- 在 Supabase SQL Editor 中执行以下语句（全量，可重复执行）
+-- WeRecord 情侣账本 数据库建表 SQL (Supabase Auth 增强版)
 
--- 1. 分类表
-CREATE TABLE IF NOT EXISTS categories (
+-- 1. 情侣组表
+CREATE TABLE IF NOT EXISTS couples (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  name TEXT NOT NULL UNIQUE,
-  color TEXT DEFAULT '#e8956d',
+  name TEXT DEFAULT 'Our Home',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. 礼物记录表
+-- 2. 个人资料表 (关联 Auth.Users)
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  couple_id UUID REFERENCES couples(id) ON DELETE SET NULL,
+  identity TEXT NOT NULL DEFAULT 'me' CHECK (identity IN ('me', 'her')),
+  display_name TEXT DEFAULT '',
+  avatar_url TEXT DEFAULT '',
+  alipay_code TEXT DEFAULT '',
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 3. 分类表
+CREATE TABLE IF NOT EXISTS categories (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  couple_id UUID REFERENCES couples(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  color TEXT DEFAULT '#e8956d',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(couple_id, name)
+);
+
+-- 4. 礼物记录表
 CREATE TABLE IF NOT EXISTS gifts (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  couple_id UUID REFERENCES couples(id) ON DELETE CASCADE,
+  creator_id UUID REFERENCES auth.users(id),
   from_user TEXT NOT NULL CHECK (from_user IN ('me', 'her')),
   to_user TEXT NOT NULL CHECK (to_user IN ('me', 'her')),
   title TEXT NOT NULL,
@@ -24,9 +45,11 @@ CREATE TABLE IF NOT EXISTS gifts (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. AA账单表
+-- 5. AA账单表
 CREATE TABLE IF NOT EXISTS aa_bills (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  couple_id UUID REFERENCES couples(id) ON DELETE CASCADE,
+  creator_id UUID REFERENCES auth.users(id),
   payer TEXT NOT NULL CHECK (payer IN ('me', 'her')),
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'settled')),
   total_amount DECIMAL(10, 2) NOT NULL,
@@ -38,7 +61,7 @@ CREATE TABLE IF NOT EXISTS aa_bills (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. AA账单商品明细表
+-- 6. AA账单商品明细表
 CREATE TABLE IF NOT EXISTS aa_items (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   bill_id UUID NOT NULL REFERENCES aa_bills(id) ON DELETE CASCADE,
@@ -47,51 +70,66 @@ CREATE TABLE IF NOT EXISTS aa_items (
   category TEXT
 );
 
--- 5. RLS 策略
+-- 7. 辅助函数 (SECURITY DEFINER 以避免 RLS 递归)
+CREATE OR REPLACE FUNCTION get_my_couple_id() 
+RETURNS UUID AS $$
+  SELECT couple_id FROM profiles WHERE id = auth.uid();
+$$ LANGUAGE sql STABLE SECURITY DEFINER;
+
+-- 8. 开启 RLS
+ALTER TABLE couples ENABLE ROW LEVEL SECURITY;
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gifts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE aa_bills ENABLE ROW LEVEL SECURITY;
 ALTER TABLE aa_items ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "allow_all_categories" ON categories FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "allow_all_gifts" ON gifts FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "allow_all_aa_bills" ON aa_bills FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "allow_all_aa_items" ON aa_items FOR ALL USING (true) WITH CHECK (true);
+-- 9. RLS 策略
 
--- 6. 已有数据库迁移（如果之前已建表，执行这些）
--- ALTER TABLE aa_items ADD COLUMN IF NOT EXISTS category TEXT;
--- ALTER TABLE gifts ADD COLUMN IF NOT EXISTS category TEXT;
--- ALTER TABLE gifts ADD COLUMN IF NOT EXISTS image_urls TEXT[] DEFAULT '{}';
--- ALTER TABLE aa_bills ADD COLUMN IF NOT EXISTS image_urls TEXT[] DEFAULT '{}';
+-- Couples: 只能查看自己所在的组
+CREATE POLICY "view_my_couple" ON couples FOR SELECT USING (id = get_my_couple_id());
 
--- 7. 索引
-CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(name);
-CREATE INDEX IF NOT EXISTS idx_gifts_from_user ON gifts(from_user);
-CREATE INDEX IF NOT EXISTS idx_gifts_date ON gifts(date DESC);
-CREATE INDEX IF NOT EXISTS idx_aa_bills_status ON aa_bills(status);
-CREATE INDEX IF NOT EXISTS idx_aa_bills_payer ON aa_bills(payer);
-CREATE INDEX IF NOT EXISTS idx_aa_bills_date ON aa_bills(date DESC);
-CREATE INDEX IF NOT EXISTS idx_aa_items_bill_id ON aa_items(bill_id);
-CREATE INDEX IF NOT EXISTS idx_aa_items_category ON aa_items(category);
+-- Profiles: 只能修改自己，查看组内成员
+CREATE POLICY "manage_own_profile" ON profiles FOR ALL USING (id = auth.uid());
+CREATE POLICY "view_group_profiles" ON profiles FOR SELECT USING (couple_id = get_my_couple_id());
 
--- 8. 个人资料表
-CREATE TABLE IF NOT EXISTS profiles (
-  id TEXT PRIMARY KEY, -- 'me' 或 'her'
-  display_name TEXT DEFAULT '',
-  avatar_url TEXT DEFAULT '',
-  alipay_code TEXT DEFAULT '', -- 支付宝收款链接
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+-- Categories: 全局默认或组内可见
+CREATE POLICY "view_categories" ON categories FOR SELECT USING (couple_id IS NULL OR couple_id = get_my_couple_id());
+CREATE POLICY "manage_group_categories" ON categories FOR ALL USING (couple_id = get_my_couple_id());
+
+-- Gifts: 组内操作
+CREATE POLICY "manage_group_gifts" ON gifts FOR ALL USING (couple_id = get_my_couple_id());
+
+-- AA Bills: 组内操作
+CREATE POLICY "manage_group_bills" ON aa_bills FOR ALL USING (couple_id = get_my_couple_id());
+
+-- AA Items: 通过对应的 Bill 间接控制 (这里简化为组内)
+CREATE POLICY "manage_group_aa_items" ON aa_items FOR ALL USING (
+  EXISTS (SELECT 1 FROM aa_bills WHERE id = aa_items.bill_id AND couple_id = get_my_couple_id())
+);
+-- 10. 邀请码表 (2.0 账号绑定核心)
+CREATE TABLE IF NOT EXISTS invitations (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  code TEXT UNIQUE NOT NULL, -- 6位大写字母数字
+  inviter_id UUID REFERENCES auth.users(id) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '24 hours')
 );
 
--- 如果表已存在，执行：ALTER TABLE profiles ADD COLUMN IF NOT EXISTS alipay_code TEXT DEFAULT '';
+ALTER TABLE invitations ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "manage_own_invitations" ON invitations FOR ALL USING (inviter_id = auth.uid());
 
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "allow_all_profiles" ON profiles FOR ALL USING (true) WITH CHECK (true);
+-- 11. 推送订阅表 (迁移更新)
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_identity TEXT NOT NULL,
+  couple_id UUID REFERENCES couples(id) ON DELETE CASCADE,
+  subscription JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_identity, couple_id)
+);
 
--- 初始化默认数据
-INSERT INTO profiles (id, display_name) VALUES ('me', '我') ON CONFLICT (id) DO NOTHING;
-INSERT INTO profiles (id, display_name) VALUES ('her', '她') ON CONFLICT (id) DO NOTHING;
-
--- 9. 存储桶策略 (需要在创建 record_images 存储桶后执行)
--- CREATE POLICY "Allow Public View" ON storage.objects FOR SELECT USING ( bucket_id = 'record_images' );
--- CREATE POLICY "Allow Public Upload" ON storage.objects FOR INSERT WITH CHECK ( bucket_id = 'record_images' );
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "manage_own_push" ON push_subscriptions FOR ALL USING (
+  couple_id = get_my_couple_id()
+);

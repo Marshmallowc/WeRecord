@@ -1,7 +1,7 @@
 'use server'
 
 import { cookies } from 'next/headers'
-import type { UserType } from '@/lib/supabase'
+import type { UserType } from '@/lib/supabase/types'
 
 export async function setIdentityCookie(id: UserType) {
   const cookieStore = await cookies()

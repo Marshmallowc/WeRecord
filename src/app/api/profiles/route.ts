@@ -1,20 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
 export async function GET() {
+  const supabase = await createClient()
   const { data, error } = await supabase.from('profiles').select('*')
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ data })
 }
 
 export async function PATCH(req: NextRequest) {
+  const supabase = await createClient()
   const body = await req.json()
   const { id, display_name, avatar_url, alipay_code } = body
 
@@ -22,13 +19,13 @@ export async function PATCH(req: NextRequest) {
 
   const { data, error } = await supabase
     .from('profiles')
-    .update({
+    .upsert({
+      id,
       display_name,
       avatar_url,
       alipay_code,
       updated_at: new Date().toISOString()
     })
-    .eq('id', id)
     .select()
     .single()
 

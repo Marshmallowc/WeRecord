@@ -1,7 +1,7 @@
 'use client'
 
 import { useIdentity } from '@/context/IdentityContext'
-import type { UserType } from '@/lib/supabase'
+import type { UserType } from '@/lib/supabase/types'
 import { ArrowRight } from 'lucide-react'
 import { setIdentityCookie } from '@/app/actions'
 import { useRouter } from 'next/navigation'
@@ -12,15 +12,9 @@ export default function IdentitySelector() {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
-  const handleSelect = (id: UserType) => {
-    // Set locally for immediate UI reaction
-    setIdentity(id)
-
-    // Set cookie and refresh server components
-    startTransition(async () => {
-      await setIdentityCookie(id)
-      router.refresh()
-    })
+  const handleSelect = async (id: UserType) => {
+    await setIdentity(id)
+    router.push('/')
   }
 
   const options: { id: UserType; label: string; sub: string; color: string }[] = [

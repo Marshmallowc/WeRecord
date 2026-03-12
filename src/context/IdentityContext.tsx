@@ -1,11 +1,14 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import type { UserType } from '@/lib/supabase'
-import { setIdentityCookie } from '@/app/actions'
+import type { UserType } from '@/lib/supabase/types'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 
 interface Profile {
   id: string
+  couple_id: string
+  identity: UserType
   display_name: string
   avatar_url: string
   alipay_code?: string
@@ -14,6 +17,9 @@ interface Profile {
 interface IdentityContextType {
   identity: UserType | null
   setIdentity: (identity: UserType) => void
+  user: any | null
+  profile: Profile | null
+  partnerProfile: Profile | null
   displayName: string
   partnerName: string
   avatarUrl: string
@@ -24,53 +30,99 @@ interface IdentityContextType {
   pendingUploads: any[]
   addPendingUpload: (upload: any) => void
   removePendingUpload: (id: string) => void
+  signOut: () => Promise<void>
 }
-
-// 🚀 Module-level Prefetch: Initiates fetch as soon as the JS module is loaded,
-// outrunning the React component lifecycle.
-const profilesPrefetch = typeof window !== 'undefined'
-  ? fetch('/api/profiles').then(res => res.json()).catch(() => ({ data: [] }))
-  : Promise.resolve({ data: [] });
 
 const IdentityContext = createContext<IdentityContextType | null>(null)
 
-export function IdentityProvider({ children, initialIdentity = null }: { children: React.ReactNode, initialIdentity?: UserType | null }) {
-  const [identity, setIdentityState] = useState<UserType | null>(initialIdentity)
+export function IdentityProvider({ children }: { children: React.ReactNode }) {
+  const [identity, setIdentityState] = useState<UserType | null>(null)
+  const [user, setUser] = useState<any | null>(null)
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [pendingUploads, setPendingUploads] = useState<any[]>([])
+  const supabase = createClient()
+  const router = useRouter()
 
-  const fetchProfiles = async () => {
+  const [isLoading, setIsLoading] = useState(true)
+
+  const fetchProfiles = async (currentUserId?: string) => {
+    const targetId = currentUserId || user?.id
+    if (!targetId) {
+      setIsLoading(false)
+      return
+    }
+
     try {
-      const res = await fetch('/api/profiles')
-      const { data } = await res.json()
-      if (data) setProfiles(data)
+      // 1. 尝试获取我的资料
+      let { data: myData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', targetId)
+        .single()
+
+      // 2. 如果不存在，则是新用户，执行初始化插入
+      if (!myData) {
+        const { data: newData, error: insertError } = await supabase
+          .from('profiles')
+          .insert({ 
+            id: targetId,
+            identity: 'me',
+            display_name: user?.email?.split('@')[0] || '新用户'
+          })
+          .select('*')
+          .single()
+        
+        if (insertError) throw insertError
+        myData = newData
+      }
+
+      if (myData) {
+        setIdentityState(myData.identity)
+
+        // 3. 如果已绑定，获取当前 Couple 下的所有成员
+        if (myData.couple_id) {
+          const { data: groupData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('couple_id', myData.couple_id)
+          
+          if (groupData) setProfiles(groupData)
+        } else {
+          setProfiles([myData])
+        }
+      }
     } catch (e) {
       console.error('Failed to refresh profiles', e)
+    } finally {
+      setIsLoading(false)
     }
   }
 
   useEffect(() => {
-    // 1. Sync identity (Support SSR prop + fallback to localStorage for migration)
-    if (!initialIdentity) {
-      const stored = localStorage.getItem('werecord_identity') as UserType | null
-      if (stored) {
-        setIdentityState(stored)
-        // 🔥 自动帮助老用户把 localStorage 迁移到 Cookie，这样下一次刷新就变成“秒开”了
-        setIdentityCookie(stored).catch(e => console.error('[IdentityContext] Migration error', e))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const currentUser = session?.user ?? null
+      setUser(currentUser)
+      if (currentUser) {
+        fetchProfiles(currentUser.id)
+      } else {
+        setProfiles([])
+        setIdentityState(null)
       }
-    } else {
-      setIdentityState(initialIdentity)
-    }
-
-    // 2. Consume the prefetched promise (often already resolved by now)
-    profilesPrefetch.then(resp => {
-      if (resp.data) setProfiles(resp.data)
     })
-  }, [initialIdentity])
 
-  const setIdentity = (id: UserType) => {
-    localStorage.setItem('werecord_identity', id)
-    setIdentityState(id)
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const setIdentity = async (id: UserType) => {
+    console.warn('Manual identity switch is deprecated in 2.0.')
+  }
+
+  const signOut = async () => {
+    await supabase.auth.signOut()
+    setIdentityState(null)
+    setUser(null)
+    setProfiles([])
+    router.push('/login')
   }
 
   const addPendingUpload = (upload: any) => {
@@ -81,12 +133,11 @@ export function IdentityProvider({ children, initialIdentity = null }: { childre
     setPendingUploads(prev => prev.filter(u => u.id !== id))
   }
 
-  const myProfile = profiles.find(p => p.id === identity)
-  const partnerProfile = profiles.find(p => p.id !== identity && (p.id === 'me' || p.id === 'her'))
+  const myProfile = profiles.find(p => p.id === user?.id)
+  const partnerProfile = profiles.find(p => p.id !== user?.id)
 
-  // Safe defaults while loading or when data is missing
-  const displayName = myProfile?.display_name || (identity === 'me' ? '我' : (identity === 'her' ? '她' : '用户'))
-  const partnerName = partnerProfile?.display_name || (identity === 'me' ? '她' : (identity === 'her' ? '我' : 'Ta'))
+  const displayName = isLoading ? '...' : (myProfile?.display_name || '用户')
+  const partnerName = isLoading ? '...' : (partnerProfile?.display_name || '伙伴')
   const avatarUrl = myProfile?.avatar_url || ''
   const partnerAvatarUrl = partnerProfile?.avatar_url || ''
   const alipayCode = myProfile?.alipay_code || ''
@@ -94,15 +145,10 @@ export function IdentityProvider({ children, initialIdentity = null }: { childre
 
   return (
     <IdentityContext.Provider value={{
-      identity, setIdentity, displayName, partnerName,
-      avatarUrl, partnerAvatarUrl, alipayCode, partnerAlipayCode, refreshProfiles: fetchProfiles,
-      pendingUploads, addPendingUpload, removePendingUpload
+      identity, setIdentity, user, profile: myProfile || null, partnerProfile: partnerProfile || null,
+      displayName, partnerName, avatarUrl, partnerAvatarUrl, alipayCode, partnerAlipayCode,
+      refreshProfiles: fetchProfiles, pendingUploads, addPendingUpload, removePendingUpload, signOut
     }}>
-      {/* 
-          Removing the blocking 'if (!mounted) return null' 
-          allows the app to show a meaningful state (at least the layout) 
-          immediately, providing a faster "First Meaningful Paint".
-      */}
       {children}
     </IdentityContext.Provider>
   )

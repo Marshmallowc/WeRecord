@@ -1,14 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
 export async function POST(req: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // 获取用户的 couple_id
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('couple_id')
+    .eq('id', user.id)
+    .single()
+
+  const coupleId = profile?.couple_id
+  if (!coupleId) {
+    return NextResponse.json({ error: '请先在设置中绑定伙伴' }, { status: 403 })
+  }
+
   const body = await req.json()
   const { identity, items: rawItems } = body
   const items = Array.isArray(rawItems) ? rawItems : (body.items ? body.items : (Array.isArray(body) ? body : [body]))
@@ -21,10 +33,14 @@ export async function POST(req: NextRequest) {
     if (type === 'gift') {
       const { from, to, title, amount, description, date, category, image_urls } = result
       if (category) {
-        // Direct database insert instead of internal fetch
-        await supabase.from('categories').upsert({ name: category }, { onConflict: 'name' })
+        await supabase.from('categories').upsert({ 
+          name: category, 
+          couple_id: coupleId 
+        }, { onConflict: 'couple_id, name' })
       }
       const { data, error } = await supabase.from('gifts').insert([{
+        couple_id: coupleId,
+        creator_id: user.id,
         from_user: from,
         to_user: to,
         title,
@@ -40,16 +56,18 @@ export async function POST(req: NextRequest) {
       const { payer, items: aaItems, total, my_share, note, date, image_urls } = result
       const categories = Array.from(new Set(((aaItems || []) as any[]).map(i => i.category).filter(Boolean)))
 
-      // Direct database insert for all categories
       if (categories.length > 0) {
-        await supabase.from('categories').upsert(categories.map(cat => ({ name: cat })), { onConflict: 'name' })
+        await supabase.from('categories').upsert(
+          categories.map(cat => ({ name: cat, couple_id: coupleId })), 
+          { onConflict: 'couple_id, name' }
+        )
       }
 
       const { data: bill, error: billError } = await supabase.from('aa_bills').insert([{
+        couple_id: coupleId,
+        creator_id: user.id,
         payer, status: 'pending',
         total_amount: total,
-        // If identity is 'her', the 'my_share' from AI is her share. 
-        // We need to save the complement (me's share) to DB.
         my_share: identity === 'her' ? (total - my_share) : my_share,
         source_text,
         image_urls: image_urls ?? [],

@@ -3,7 +3,7 @@ import './globals.css'
 import { IdentityProvider } from '@/context/IdentityContext'
 import AppShell from '@/components/AppShell'
 import { cookies } from 'next/headers'
-import type { UserType } from '@/lib/supabase'
+import type { UserType } from '@/lib/supabase/types'
 
 export const metadata: Metadata = {
   title: 'WeRecord - 情侣账本',
@@ -34,7 +34,7 @@ export default async function RootLayout({
         <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL} />
       </head>
       <body suppressHydrationWarning>
-        <IdentityProvider initialIdentity={initialIdentity as any}>
+        <IdentityProvider>
           <AppShell>{children}</AppShell>
         </IdentityProvider>
       </body>

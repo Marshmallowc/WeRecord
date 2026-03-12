@@ -1,20 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
 export async function GET() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabase.from('profiles').select('couple_id').eq('id', user.id).single()
+  const coupleId = profile?.couple_id
+  
+  if (!coupleId) return NextResponse.json({
+    gifts: { totalByMe: 0, totalByHer: 0, categories: {}, count: 0 },
+    aa: { pendingCount: 0, settledCount: 0, categories: {}, pendingBalance: 0 },
+    analytics: { monthlyTrends: {}, dailyTotals: {}, hourlyDistribution: new Array(24).fill(0), categoryUserSplit: {}, balanceHistory: [], timeDistribution: { workday: 0, weekend: 0 } }
+  })
+
   const [giftsRes, billsRes] = await Promise.all([
     supabase.from('gifts')
       .select('from_user, amount, category, date, created_at')
+      .eq('couple_id', coupleId)
       .order('date', { ascending: false }),
     supabase.from('aa_bills')
       .select('payer, status, my_share, total_amount, date, created_at, aa_items(amount, category)')
+      .eq('couple_id', coupleId)
       .order('date', { ascending: false }),
   ])
 

@@ -12,7 +12,8 @@ import { EditModal } from '@/components/EditModal'
 import { PaymentModal } from '@/components/PaymentModal'
 import useSWR, { mutate } from 'swr'
 import imageCompression from 'browser-image-compression'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/client'
+const supabase = createClient()
 
 const fetcher = (url: string) => fetch(url).then(res => res.json())
 
