@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Mail, Sparkles, Loader2, Github, Chrome, Apple, Lock, ArrowRight, UserPlus } from 'lucide-react'
+import { Mail, Sparkles, Loader2, Github, Chrome, Apple, Lock, ArrowRight, UserPlus, Info } from 'lucide-react'
 
 type AuthMode = 'magic-link' | 'password-login' | 'password-signup'
 
@@ -12,22 +12,55 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [mode, setMode] = useState<AuthMode>('password-login')
   const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info', text: string } | null>(null)
   
   const searchParams = useSearchParams()
   const router = useRouter()
   const supabase = createClient()
+  const pollTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     const error = searchParams.get('error')
     const errorDescription = searchParams.get('error_description')
+    const status = searchParams.get('status')
+
     if (error) {
       setMessage({
         type: 'error',
         text: errorDescription || (error === 'auth-failed' ? '身份验证失败，请尝试重新登录。' : '发生未知错误。')
       })
+    } else if (status === 'verified') {
+      setMessage({
+        type: 'success',
+        text: '账号验证成功！您现在可以返回原设备，或在此直接登录。'
+      })
+    }
+    
+    return () => {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current)
     }
   }, [searchParams])
+
+  // Smart polling to detect remote confirmation
+  const startPolling = (userEmail: string, userPass: string) => {
+    if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+    
+    pollTimerRef.current = setInterval(async () => {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: userEmail,
+        password: userPass,
+      })
+
+      if (data?.session) {
+        if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+        router.refresh()
+        router.push('/')
+      } else if (error && error.message !== 'Email not confirmed') {
+        // If it's a real error other than "not confirmed", stop polling
+        if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+      }
+    }, 3000)
+  }
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -41,23 +74,41 @@ export default function LoginPage() {
           options: { emailRedirectTo: `${window.location.origin}/auth/confirm` },
         })
         if (error) throw error
-        setMessage({ type: 'success', text: '神奇链接已发送至您的邮箱，请核对。' })
+        setMessage({ type: 'success', text: '验证链接已发送至邮箱，请在当前或其它设备点击。' })
+        setLoading(false)
       } else if (mode === 'password-login') {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
-        router.push('/')
+        
+        // 重要：使用 refresh() 强制 Next.js 刷新服务器端对于当前会话（Cookies）的感应
+        router.refresh()
+        
+        // 赋予一点点时间让浏览器完全写入 Cookie 并准备好跳转，避免 Middleware 没读到最新 Session 又弹回 /login
+        setTimeout(() => {
+          router.push('/')
+        }, 150)
+        
+        // 成功登录后不再设置 loading 为 false，让其保持加载状态直到页面跳转
+        return;
       } else {
         const { error } = await supabase.auth.signUp({ 
           email, 
           password,
-          options: { emailRedirectTo: `${window.location.origin}/auth/confirm` }
+          options: { emailRedirectTo: `${window.location.origin}/auth/confirm?device=other` }
         })
         if (error) throw error
-        setMessage({ type: 'success', text: '注册成功！请查收验证邮件以激活账号。' })
+        
+        setMessage({ 
+          type: 'info', 
+          text: '账号已创建，正在等待邮件激活。您可以在此等待，验证后将自动进入。' 
+        })
+        
+        // Start watching for activation
+        startPolling(email, password)
+        setLoading(false)
       }
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || '操作失败' })
-    } finally {
       setLoading(false)
     }
   }
@@ -116,7 +167,7 @@ export default function LoginPage() {
           letterSpacing: '-0.8px',
           color: '#fff'
         }}>
-          {mode === 'password-login' ? '欢迎回来' : mode === 'password-signup' ? '开启记录' : '神奇链接'}
+          {mode === 'password-login' ? '欢迎回来' : mode === 'password-signup' ? '开启记录' : '身份验证'}
         </h1>
         
         {/* Tab Switcher */}
@@ -223,17 +274,21 @@ export default function LoginPage() {
             borderRadius: '12px',
             fontSize: '13px',
             textAlign: 'left',
-            background: message.type === 'success' ? 'rgba(111,207,151,0.08)' : 'rgba(235,87,87,0.08)',
-            color: message.type === 'success' ? '#6fcf97' : '#eb5757',
-            border: `1px solid ${message.type === 'success' ? 'rgba(111,207,151,0.15)' : 'rgba(235,87,87,0.15)'}`
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            background: message.type === 'success' ? 'rgba(111,207,151,0.08)' : (message.type === 'info' ? 'rgba(125,184,247,0.08)' : 'rgba(235,87,87,0.08)'),
+            color: message.type === 'success' ? '#6fcf97' : (message.type === 'info' ? '#7db8f7' : '#eb5757'),
+            border: `1px solid ${message.type === 'success' ? 'rgba(111,207,151,0.15)' : (message.type === 'info' ? 'rgba(125,184,247,0.15)' : 'rgba(235,87,87,0.15)')}`
           }}>
-            {message.text}
+            {message.type === 'info' ? <Info size={16} className="spin-slow" /> : (message.type === 'success' ? <Loader2 size={16} className="spin" /> : null)}
+            <span style={{ lineHeight: '1.4' }}>{message.text}</span>
           </div>
         )}
       </div>
 
       <div style={{ position: 'absolute', bottom: '32px', fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '1px', opacity: 0.5 }}>
-        WERE CORD &bull; SECURE AUTHENTICATION
+        WERE CORD | SECURE AUTHENTICATION
       </div>
     </div>
   )

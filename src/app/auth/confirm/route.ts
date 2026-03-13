@@ -8,14 +8,14 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code')
   const type = searchParams.get('type') as EmailOtpType | null
   const next = searchParams.get('next') ?? '/'
+  const device = searchParams.get('device') // Check if it's from another device
 
   const redirectTo = request.nextUrl.clone()
   redirectTo.pathname = next
   redirectTo.searchParams.delete('token_hash')
   redirectTo.searchParams.delete('code')
   redirectTo.searchParams.delete('type')
-
-  console.log('[Auth Confirm] Request params:', { token_hash: !!token_hash, code: !!code, type, next })
+  redirectTo.searchParams.delete('device')
 
   if (token_hash && type) {
     const supabase = await createClient()
@@ -26,27 +26,34 @@ export async function GET(request: NextRequest) {
     })
 
     if (!error) {
-      console.log('[Auth Confirm] OTP verified successfully')
+      // If the verification came from a different device (e.g., computer while phone is waiting)
+      // we redirect to a plain success page or login with status to avoid session hijacking on computer
+      if (device === 'other') {
+        redirectTo.pathname = '/login'
+        redirectTo.searchParams.set('status', 'verified')
+        return NextResponse.redirect(redirectTo)
+      }
+
       redirectTo.searchParams.delete('next')
       return NextResponse.redirect(redirectTo)
-    } else {
-      console.error('[Auth Confirm] OTP verification error:', error.message)
     }
   } else if (code) {
     const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error) {
-      console.log('[Auth Confirm] Code exchanged for session successfully')
+      if (device === 'other') {
+        redirectTo.pathname = '/login'
+        redirectTo.searchParams.set('status', 'verified')
+        return NextResponse.redirect(redirectTo)
+      }
+      
       redirectTo.searchParams.delete('next')
       return NextResponse.redirect(redirectTo)
-    } else {
-      console.error('[Auth Confirm] Code exchange error:', error.message)
     }
   }
 
-  // If we reach here, something went wrong
-  console.log('[Auth Confirm] Authentication failed, redirecting to login...')
+  // Fallback for failure
   redirectTo.pathname = '/login'
   redirectTo.searchParams.set('error', 'auth-failed')
   redirectTo.searchParams.set('error_description', '验证失败，请尝试重新发送链接')

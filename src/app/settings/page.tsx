@@ -369,7 +369,7 @@ export default function SettingsPage() {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: '14px', fontWeight: '700' }}>已绑定：{partnerProfile?.display_name || '另一半'}</div>
-                <div style={{ fontSize: '11px', color: 'var(--green)' }}>● 空间同步中</div>
+                <div style={{ fontSize: '11px', color: 'var(--green)' }}>空间实时同步中</div>
               </div>
               <Link2 size={16} color="var(--green)" />
             </div>
@@ -420,6 +420,9 @@ export default function SettingsPage() {
             <LogOut size={14} /> 退出登录
           </button>
         </div>
+      </div>
+      <div style={{ position: 'absolute', bottom: '32px', fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '1px', opacity: 0.5 }}>
+        WERE CORD | PREMIUM EXPERIENCE
       </div>
     </div>
   )

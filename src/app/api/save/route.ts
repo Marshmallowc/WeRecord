@@ -74,13 +74,29 @@ export async function POST(req: NextRequest) {
         note: note ?? null, date: date ?? new Date().toISOString().split('T')[0],
       }]).select().single()
 
-      if (!billError) {
-        const itemRows = (aaItems as any[]).map(item => ({
-          bill_id: bill.id, name: item.name, amount: item.amount,
+      if (!billError && bill) {
+        // 核心修复：处理 AI 可能漏掉的明细金额，及确保有明细数据用于前端展示标题
+        const finalItems = (Array.isArray(aaItems) && aaItems.length > 0) 
+          ? aaItems 
+          : [{ name: '生活杂项', amount: total }];
+
+        const itemRows = finalItems.map(item => ({
+          bill_id: bill.id,
+          name: item.name || '支出项',
+          // 容错逻辑：如果明细没有金额，优先用总额填充（单项时），或补 0（多项时）以避开数据库 NOT NULL 约束
+          amount: (typeof item.amount === 'number') ? item.amount : (finalItems.length === 1 ? (total || 0) : 0),
           category: item.category ?? null,
         }))
-        await supabase.from('aa_items').insert(itemRows)
+
+        const { error: itemsError } = await supabase.from('aa_items').insert(itemRows)
+        
+        if (itemsError) {
+          console.error('[Save API] aa_items 插入失败:', itemsError)
+        }
+        
         savedResults.push({ data: bill, type: 'aa' })
+      } else if (billError) {
+        console.error('[Save API] aa_bills 插入失败:', billError)
       }
     }
   }
