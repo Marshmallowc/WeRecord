@@ -717,17 +717,24 @@ export default function HomePage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <h2 style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-secondary)' }}>最近动态</h2>
-            {pendingToPayRecords.length > 0 && (
-              <button 
+            {pendingToPayRecords.length > 0 ? (
+              <button
                 onClick={() => setIsBatchPaymentOpen(true)}
-                className="btn-primary" 
-                style={{ 
+                className="btn-primary"
+                style={{
                   fontSize: '11px', padding: '4px 10px', height: 'auto', borderRadius: '100px',
                   background: 'var(--accent)', boxShadow: '0 4px 12px var(--accent-bg)'
                 }}
               >
                 一键结清 ({pendingToPayRecords.length}笔)
               </button>
+            ) : (
+              <span style={{
+                fontSize: '11px', color: 'var(--green)', padding: '2px 8px',
+                borderRadius: '100px', background: 'var(--green-bg)', fontWeight: '600'
+              }}>
+                已结清
+              </span>
             )}
           </div>
           <button onClick={() => mutate(url => typeof url === 'string' && url.includes('/api/records'))} className="btn-ghost" style={{
