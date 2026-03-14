@@ -76,9 +76,9 @@ export async function PATCH(req: NextRequest) {
   if (!profile?.couple_id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const { id, type, ...updates } = body
+  const { id, ids, type, ...updates } = body
 
-  if (!id || !type) return NextResponse.json({ error: 'Missing id or type' }, { status: 400 })
+  if ((!id && !ids) || !type) return NextResponse.json({ error: 'Missing id or type' }, { status: 400 })
 
   if (type === 'gift') {
     const { error } = await supabase.from('gifts').update({
@@ -91,6 +91,8 @@ export async function PATCH(req: NextRequest) {
     }).eq('id', id).eq('couple_id', profile.couple_id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   } else {
+    // Support batch update for AA bills (mainly for 'settled' status)
+    const targetIds = ids || [id]
     const { error } = await supabase.from('aa_bills').update({
       status: updates.status,
       note: updates.note,
@@ -98,7 +100,7 @@ export async function PATCH(req: NextRequest) {
       payer: updates.payer,
       total_amount: updates.total_amount,
       my_share: updates.my_share,
-    }).eq('id', id).eq('couple_id', profile.couple_id)
+    }).in('id', targetIds).eq('couple_id', profile.couple_id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   }
 

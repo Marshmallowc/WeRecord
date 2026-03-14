@@ -10,6 +10,7 @@ import {
 import { FeedSkeleton } from '@/components/RecordSkeleton'
 import { EditModal } from '@/components/EditModal'
 import { PaymentModal } from '@/components/PaymentModal'
+import { BatchPaymentModal } from '@/components/BatchPaymentModal'
 import useSWR, { mutate } from 'swr'
 import imageCompression from 'browser-image-compression'
 import { createClient } from '@/lib/supabase/client'
@@ -64,6 +65,7 @@ export default function HomePage() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [editingRecord, setEditingRecord] = useState<RecordItem | null>(null)
   const [paymentRecord, setPaymentRecord] = useState<RecordItem | null>(null)
+  const [isBatchPaymentOpen, setIsBatchPaymentOpen] = useState(false)
 
   // Search & Filter State
   const [searchInput, setSearchInput] = useState('')
@@ -101,6 +103,19 @@ export default function HomePage() {
     if (filterType && r.record_type !== filterType) return false
     return true
   })
+
+  // Batch Settlement Logic
+  const pendingToPayRecords = useMemo(() => {
+    return displayRecords.filter(r => {
+      if (r.record_type !== 'aa' || r.status === 'settled' || r.is_uploading) return false
+      const isMePayer = r.payer === identity
+      const effectiveMyShare = identity === 'me' ? (r.my_share || 0) : ((r.total_amount || 0) - (r.my_share || 0))
+      return !isMePayer && effectiveMyShare > 0
+    }).map(r => {
+      const effectiveMyShare = identity === 'me' ? (r.my_share || 0) : ((r.total_amount || 0) - (r.my_share || 0))
+      return { ...r, displayAmount: effectiveMyShare }
+    })
+  }, [displayRecords, identity])
 
   // Combine errors
   const isNetworkError = !!recordsError || !!catError;
@@ -357,6 +372,54 @@ export default function HomePage() {
       mutate(keyFilter)
     } catch (err) {
       showToast('更新失败', false)
+      mutate(keyFilter)
+    }
+  }
+
+  async function handleBatchSettle(ids: string[]) {
+    const keyFilter = (url: any) => typeof url === 'string' && url.includes('/api/records')
+
+    // 1. Optimistic UI update
+    mutate(keyFilter, (current: any) => {
+      if (!current?.data) return current
+      return {
+        ...current,
+        data: current.data.map((r: any) => ids.includes(r.id) ? { ...r, status: 'settled' } : r)
+      }
+    }, false)
+
+    showToast('正在处理批量结清...')
+
+    try {
+      // 2. Network request using the new batch support in PATCH
+      await fetch('/api/records', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids, type: 'aa', status: 'settled' }),
+      })
+
+      // 3. Send Summary Notification to Partner
+      const totalAmount = pendingToPayRecords.reduce((sum, r) => sum + r.displayAmount, 0)
+      const count = ids.length
+      const isMe = identity === 'me'
+      const targetIdentity = isMe ? 'her' : 'me'
+
+      fetch('/api/push/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetIdentity,
+          title: '💰 账单全部结清',
+          body: `哇~ Ta 一次性结清了 ${count} 笔账单 (共 ${totalAmount} 元)，快去看看吧！`,
+          url: '/'
+        })
+      }).catch(err => console.error('Failed to notify partner', err))
+
+      showToast('全部结清成功')
+      // 4. Final sync
+      mutate(keyFilter)
+    } catch (err) {
+      showToast('批量更新失败', false)
       mutate(keyFilter)
     }
   }
@@ -652,7 +715,21 @@ export default function HomePage() {
       {/* Main Feed */}
       <div style={{ minHeight: '400px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-secondary)' }}>最近动态</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h2 style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-secondary)' }}>最近动态</h2>
+            {pendingToPayRecords.length > 0 && (
+              <button 
+                onClick={() => setIsBatchPaymentOpen(true)}
+                className="btn-primary" 
+                style={{ 
+                  fontSize: '11px', padding: '4px 10px', height: 'auto', borderRadius: '100px',
+                  background: 'var(--accent)', boxShadow: '0 4px 12px var(--accent-bg)'
+                }}
+              >
+                一键结清 ({pendingToPayRecords.length}笔)
+              </button>
+            )}
+          </div>
           <button onClick={() => mutate(url => typeof url === 'string' && url.includes('/api/records'))} className="btn-ghost" style={{
             display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '4px 8px'
           }}>
@@ -719,6 +796,17 @@ export default function HomePage() {
           partnerName={partnerName}
           alipayCode={partnerAlipayCode}
           onConfirm={() => handleSettle(paymentRecord.id, paymentRecord)}
+        />
+      )}
+
+      {isBatchPaymentOpen && (
+        <BatchPaymentModal
+          isOpen={isBatchPaymentOpen}
+          onClose={() => setIsBatchPaymentOpen(false)}
+          records={pendingToPayRecords}
+          partnerName={partnerName}
+          alipayCode={partnerAlipayCode}
+          onConfirm={handleBatchSettle}
         />
       )}
     </div>
