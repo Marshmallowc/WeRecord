@@ -3,11 +3,14 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Mail, Sparkles, Loader2, Github, Chrome, Apple, Lock, ArrowRight, UserPlus, Info } from 'lucide-react'
+import { Mail, Loader2, Github, Chrome, Apple, Lock, ArrowRight, UserPlus, Info, ChevronLeft } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 
 type AuthMode = 'magic-link' | 'password-login' | 'password-signup'
+type UIStep = 'landing' | 'auth'
 
 export default function LoginPage() {
+  const [step, setStep] = useState<UIStep>('landing')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [mode, setMode] = useState<AuthMode>('password-login')
@@ -25,11 +28,13 @@ export default function LoginPage() {
     const status = searchParams.get('status')
 
     if (error) {
+      setStep('auth')
       setMessage({
         type: 'error',
         text: errorDescription || (error === 'auth-failed' ? '身份验证失败，请尝试重新登录。' : '发生未知错误。')
       })
     } else if (status === 'verified') {
+      setStep('auth')
       setMessage({
         type: 'success',
         text: '账号验证成功！您现在可以返回原设备，或在此直接登录。'
@@ -41,7 +46,6 @@ export default function LoginPage() {
     }
   }, [searchParams])
 
-  // Smart polling to detect remote confirmation
   const startPolling = (userEmail: string, userPass: string) => {
     if (pollTimerRef.current) clearInterval(pollTimerRef.current)
     
@@ -56,7 +60,6 @@ export default function LoginPage() {
         router.refresh()
         router.push('/')
       } else if (error && error.message !== 'Email not confirmed') {
-        // If it's a real error other than "not confirmed", stop polling
         if (pollTimerRef.current) clearInterval(pollTimerRef.current)
       }
     }, 3000)
@@ -74,21 +77,13 @@ export default function LoginPage() {
           options: { emailRedirectTo: `${window.location.origin}/auth/confirm` },
         })
         if (error) throw error
-        setMessage({ type: 'success', text: '验证链接已发送至邮箱，请在当前或其它设备点击。' })
+        setMessage({ type: 'success', text: '验证链接已发送至邮箱，请查收。' })
         setLoading(false)
       } else if (mode === 'password-login') {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
-        
-        // 重要：使用 refresh() 强制 Next.js 刷新服务器端对于当前会话（Cookies）的感应
         router.refresh()
-        
-        // 赋予一点点时间让浏览器完全写入 Cookie 并准备好跳转，避免 Middleware 没读到最新 Session 又弹回 /login
-        setTimeout(() => {
-          router.push('/')
-        }, 150)
-        
-        // 成功登录后不再设置 loading 为 false，让其保持加载状态直到页面跳转
+        setTimeout(() => router.push('/'), 150)
         return;
       } else {
         const { error } = await supabase.auth.signUp({ 
@@ -97,13 +92,10 @@ export default function LoginPage() {
           options: { emailRedirectTo: `${window.location.origin}/auth/confirm?device=other` }
         })
         if (error) throw error
-        
         setMessage({ 
           type: 'info', 
-          text: '账号已创建，正在等待邮件激活。您可以在此等待，验证后将自动进入。' 
+          text: '账号已创建，激活邮件已发送。验证后将自动进入。' 
         })
-        
-        // Start watching for activation
         startPolling(email, password)
         setLoading(false)
       }
@@ -121,216 +113,359 @@ export default function LoginPage() {
     if (error) setMessage({ type: 'error', text: error.message })
   }
 
+  const toggleMode = (newMode: AuthMode) => {
+    setMode(newMode)
+    setStep('auth')
+    setMessage(null)
+  }
+
   return (
-    <div className="fade-in" style={{
+    <div style={{
       minHeight: '100dvh',
+      background: '#fff',
+      color: '#2d2a28',
       display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px',
-      background: 'radial-gradient(circle at top right, rgba(232,149,109,0.1), transparent 40%), radial-gradient(circle at bottom left, rgba(125,184,247,0.1), transparent 40%)',
+      flexDirection: 'column',
+      maxWidth: '520px',
+      margin: '0 auto',
       position: 'relative',
       overflow: 'hidden'
-    }}>
-      <div className="premium-card" style={{
-        width: '100%',
-        maxWidth: '420px',
-        padding: '48px 32px',
-        textAlign: 'center',
-        position: 'relative',
-        zIndex: 1,
-        backdropFilter: 'blur(20px)',
-        backgroundColor: 'rgba(255, 255, 255, 0.02)',
-        border: '1px solid rgba(255, 255, 255, 0.05)',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-        borderRadius: '24px'
-      }}>
-        <div style={{
-          width: '64px',
-          height: '64px',
-          borderRadius: '18px',
-          background: 'linear-gradient(135deg, var(--accent), #ffb28a)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          margin: '0 auto 24px',
-          color: '#fff',
-          boxShadow: '0 10px 20px rgba(232,149,109,0.25)',
-        }}>
-          <Sparkles size={32} strokeWidth={1.5} />
-        </div>
-
-        <h1 style={{
-          fontSize: '26px',
-          fontWeight: '900',
-          marginBottom: '8px',
-          letterSpacing: '-0.8px',
-          color: '#fff'
-        }}>
-          {mode === 'password-login' ? '欢迎回来' : mode === 'password-signup' ? '开启记录' : '身份验证'}
-        </h1>
-        
-        {/* Tab Switcher */}
-        <div style={{
-          display: 'flex',
-          background: 'rgba(255,255,255,0.03)',
-          padding: '4px',
-          borderRadius: '12px',
-          marginBottom: '32px',
-          marginTop: '16px'
-        }}>
-          {[
-            { id: 'password-login', label: '登录' },
-            { id: 'password-signup', label: '注册' },
-            { id: 'magic-link', label: '免密' }
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => { setMode(tab.id as AuthMode); setMessage(null); }}
-              style={{
-                flex: 1,
-                padding: '8px',
-                fontSize: '13px',
-                fontWeight: '600',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: 'pointer',
-                background: mode === tab.id ? 'rgba(255,255,255,0.08)' : 'transparent',
-                color: mode === tab.id ? 'var(--accent)' : 'var(--text-muted)',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ position: 'relative' }}>
-            <Mail size={16} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-            <input
-              type="email"
-              placeholder="电子邮箱"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              style={inputStyle}
-            />
-          </div>
-
-          {mode !== 'magic-link' && (
-            <div style={{ position: 'relative' }}>
-              <Lock size={16} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-              <input
-                type="password"
-                placeholder="密码"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                style={inputStyle}
+    }} className="fade-in">
+      <AnimatePresence mode="wait">
+        {step === 'landing' ? (
+          <motion.div
+            key="landing"
+            initial={{ opacity: 0, scale: 1.1 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, x: -50 }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '0 32px 48px',
+              textAlign: 'center'
+            }}
+          >
+            {/* Hero Illustration Block */}
+            <div style={{
+              position: 'relative',
+              marginTop: '40px',
+              marginBottom: '40px'
+            }}>
+              {/* Soft background blob */}
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '120%',
+                height: '100%',
+                background: '#fcf6f0',
+                borderRadius: '40% 60% 70% 30% / 40% 50% 60% 50%',
+                zIndex: -1,
+                opacity: 0.8
+              }} />
+              <img 
+                src="/login-hero.png" 
+                alt="WeRecord Hero" 
+                style={{
+                  width: '100%',
+                  height: 'auto',
+                  objectFit: 'contain',
+                  borderRadius: '24px'
+                }}
               />
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            style={buttonStyle}
+            {/* Slogan */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <h1 style={{
+                fontSize: '28px',
+                fontWeight: '800',
+                marginBottom: '16px',
+                color: '#5c4b40',
+                lineHeight: '1.3'
+              }}>
+                这一刻，<br />记录我们的专属记忆
+              </h1>
+              <p style={{
+                fontSize: '15px',
+                color: '#8c7e74',
+                lineHeight: '1.6',
+                marginBottom: '40px'
+              }}>
+                礼物、花销与感悟<br />让每一份精彩都有迹可循
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  onClick={() => toggleMode('password-signup')}
+                  style={{
+                    flex: 1,
+                    padding: '16px',
+                    borderRadius: '16px',
+                    border: 'none',
+                    background: '#bc8a70',
+                    color: '#fff',
+                    fontSize: '16px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    boxShadow: '0 8px 16px rgba(188, 138, 112, 0.2)'
+                  }}
+                >
+                  开启记录
+                </button>
+                <button
+                  onClick={() => toggleMode('password-login')}
+                  style={{
+                    flex: 1,
+                    padding: '16px',
+                    borderRadius: '16px',
+                    border: '1px solid #e6e0da',
+                    background: 'transparent',
+                    color: '#8c7e74',
+                    fontSize: '16px',
+                    fontWeight: '700',
+                    cursor: 'pointer'
+                  }}
+                >
+                  直接登录
+                </button>
+              </div>
+
+              {/* Social Login Divider */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                margin: '8px 0',
+                color: '#d1c8bf'
+              }}>
+                <div style={{ flex: 1, height: '1px', background: '#f3f0ed' }} />
+                <span style={{ fontSize: '12px', fontWeight: '500' }}>社交账号登录</span>
+                <div style={{ flex: 1, height: '1px', background: '#f3f0ed' }} />
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button onClick={() => handleOAuthLogin('github')} style={socialLandingStyle}>
+                  <Github size={20} />
+                </button>
+                <button onClick={() => handleOAuthLogin('google')} style={socialLandingStyle}>
+                  <Chrome size={20} />
+                </button>
+                <button onClick={() => handleOAuthLogin('apple')} style={socialLandingStyle}>
+                  <Apple size={20} />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="auth"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 50 }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            style={{
+              padding: '40px 32px',
+              display: 'flex',
+              flexDirection: 'column',
+              flex: 1
+            }}
           >
-            {loading ? <Loader2 size={20} className="spin" /> : (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {mode === 'password-login' ? '立即登录' : mode === 'password-signup' ? '即刻加入' : '发送链接'}
-                <ArrowRight size={16} />
-              </span>
-            )}
-          </button>
-        </form>
+            {/* Header with back button */}
+            <div style={{ marginBottom: '40px' }}>
+              <button 
+                onClick={() => setStep('landing')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#8c7e74',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  padding: 0,
+                  cursor: 'pointer',
+                  marginBottom: '24px'
+                }}
+              >
+                <ChevronLeft size={20} /> 返回
+              </button>
+              <h2 style={{
+                fontSize: '28px',
+                fontWeight: '800',
+                color: '#5c4b40'
+              }}>
+                {mode === 'password-login' ? '欢迎回来' : mode === 'password-signup' ? '即刻加入' : '发送链接'}
+              </h2>
+            </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '24px 0', color: 'var(--text-muted)', fontSize: '12px' }}>
-          <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
-          <span>更多登录方式</span>
-          <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
-        </div>
+            {/* Mode Switcher */}
+            <div style={{
+              display: 'flex',
+              background: '#f9f7f5',
+              padding: '4px',
+              borderRadius: '12px',
+              marginBottom: '32px'
+            }}>
+              {[
+                { id: 'password-login', label: '登录' },
+                { id: 'password-signup', label: '注册' },
+                { id: 'magic-link', label: '免密' }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => { setMode(tab.id as AuthMode); setMessage(null); }}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    borderRadius: '8px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: mode === tab.id ? '#fff' : 'transparent',
+                    color: mode === tab.id ? '#bc8a70' : '#8c7e74',
+                    boxShadow: mode === tab.id ? '0 2px 8px rgba(0,0,0,0.05)' : 'none',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
-          {['google', 'github', 'apple'].map(id => (
-            <button
-              key={id}
-              onClick={() => handleOAuthLogin(id as any)}
-              style={socialButtonStyle}
-            >
-              {id === 'google' && <Chrome size={18} />}
-              {id === 'github' && <Github size={18} />}
-              {id === 'apple' && <Apple size={18} />}
-            </button>
-          ))}
-        </div>
+            {/* Form */}
+            <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ position: 'relative' }}>
+                <Mail size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#d1c8bf' }} />
+                <input
+                  type="email"
+                  placeholder="电子邮箱"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  style={inputFormStyle}
+                />
+              </div>
 
-        {message && (
-          <div className="fade-in" style={{
-            marginTop: '24px',
-            padding: '12px 16px',
-            borderRadius: '12px',
-            fontSize: '13px',
-            textAlign: 'left',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            background: message.type === 'success' ? 'rgba(111,207,151,0.08)' : (message.type === 'info' ? 'rgba(125,184,247,0.08)' : 'rgba(235,87,87,0.08)'),
-            color: message.type === 'success' ? '#6fcf97' : (message.type === 'info' ? '#7db8f7' : '#eb5757'),
-            border: `1px solid ${message.type === 'success' ? 'rgba(111,207,151,0.15)' : (message.type === 'info' ? 'rgba(125,184,247,0.15)' : 'rgba(235,87,87,0.15)')}`
-          }}>
-            {message.type === 'info' ? <Info size={16} className="spin-slow" /> : (message.type === 'success' ? <Loader2 size={16} className="spin" /> : null)}
-            <span style={{ lineHeight: '1.4' }}>{message.text}</span>
-          </div>
+              {mode !== 'magic-link' && (
+                <div style={{ position: 'relative' }}>
+                  <Lock size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#d1c8bf' }} />
+                  <input
+                    type="password"
+                    placeholder="密码"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    style={inputFormStyle}
+                  />
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  marginTop: '12px',
+                  padding: '16px',
+                  borderRadius: '16px',
+                  border: 'none',
+                  background: '#bc8a70',
+                  color: '#fff',
+                  fontSize: '16px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: '0 8px 16px rgba(188, 138, 112, 0.2)',
+                  transition: 'all 0.2s ease',
+                  opacity: loading ? 0.7 : 1
+                }}
+              >
+                {loading ? <Loader2 size={20} className="spin" /> : (
+                  <>
+                    <span>{mode === 'password-login' ? '登 录' : mode === 'password-signup' ? '注 册' : '发 送'}</span>
+                    <ArrowRight size={18} />
+                  </>
+                )}
+              </button>
+            </form>
+
+            <AnimatePresence>
+              {message && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  style={{
+                    marginTop: '32px',
+                    padding: '16px',
+                    borderRadius: '16px',
+                    fontSize: '14px',
+                    lineHeight: '1.5',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    background: message.type === 'success' ? '#f0f9f4' : (message.type === 'info' ? '#f0f7f9' : '#fef1f1'),
+                    color: message.type === 'success' ? '#27ae60' : (message.type === 'info' ? '#1976d2' : '#d32f2f'),
+                    border: `1px solid ${message.type === 'success' ? '#e1f2e8' : (message.type === 'info' ? '#e1f0f2' : '#fde7e7')}`
+                  }}
+                >
+                  <Info size={18} />
+                  <span>{message.text}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
         )}
-      </div>
-
-      <div style={{ position: 'absolute', bottom: '32px', fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '1px', opacity: 0.5 }}>
-        WERE CORD | SECURE AUTHENTICATION
+      </AnimatePresence>
+      
+      {/* Footer text */}
+      <div style={{ 
+        padding: '24px', 
+        textAlign: 'center', 
+        fontSize: '11px', 
+        color: '#d1c8bf', 
+        letterSpacing: '1px',
+        fontWeight: '600'
+      }}>
+        WERE CORD · 记录爱与瞬间
       </div>
     </div>
   )
 }
 
-const inputStyle: React.CSSProperties = {
+const socialLandingStyle: React.CSSProperties = {
+  flex: 1,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '12px',
+  borderRadius: '12px',
+  border: '1px solid #f3f0ed',
+  background: '#fff',
+  color: '#8c7e74',
+  cursor: 'pointer',
+  transition: 'all 0.2s ease'
+}
+
+const inputFormStyle: React.CSSProperties = {
   width: '100%',
-  padding: '14px 14px 14px 44px',
-  borderRadius: '12px',
-  border: '1px solid rgba(255, 255, 255, 0.08)',
-  background: 'rgba(255, 255, 255, 0.02)',
-  fontSize: '14px',
-  color: '#fff',
-  outline: 'none',
-  transition: 'all 0.2s ease'
-}
-
-const buttonStyle: React.CSSProperties = {
-  marginTop: '8px',
-  padding: '14px',
-  borderRadius: '12px',
-  border: 'none',
-  background: 'var(--accent)',
-  color: '#fff',
+  padding: '16px 16px 16px 48px',
+  borderRadius: '16px',
+  border: '1px solid #f3f0ed',
+  background: '#f9f7f5',
   fontSize: '15px',
-  fontWeight: '700',
-  cursor: 'pointer',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  transition: 'all 0.2s ease'
-}
-
-const socialButtonStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: '10px',
-  borderRadius: '10px',
-  border: '1px solid rgba(255, 255, 255, 0.06)',
-  background: 'rgba(255, 255, 255, 0.02)',
-  color: 'var(--text-primary)',
-  cursor: 'pointer',
-  transition: 'all 0.2s ease'
+  color: '#2d2a28',
+  outline: 'none',
+  transition: 'border-color 0.2s ease'
 }
