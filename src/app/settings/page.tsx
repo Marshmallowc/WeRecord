@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useIdentity } from '@/context/IdentityContext'
+import { useTheme } from '@/context/ThemeContext'
 import { createClient } from '@/lib/supabase/client'
-import { User, Check, Camera, RefreshCw, Bell, BellOff, LogOut, Link2, Copy, Send } from 'lucide-react'
+import { User, Check, Camera, RefreshCw, Bell, BellOff, LogOut, Link2, Copy, Send, Moon, Sun } from 'lucide-react'
 import { urlBase64ToUint8Array } from '@/lib/utils'
 
 const AVATARS = [
@@ -17,6 +18,7 @@ const AVATARS = [
 
 export default function SettingsPage() {
   const { identity, profile, user, displayName, avatarUrl, alipayCode, refreshProfiles, partnerProfile, signOut } = useIdentity()
+  const { theme, toggleTheme } = useTheme()
   const supabase = createClient()
   const [name, setName] = useState('')
   const [selectedAvatar, setSelectedAvatar] = useState('')
@@ -290,6 +292,25 @@ export default function SettingsPage() {
 
       <div className="premium-card" style={{ padding: '24px' }}>
         <h3 style={{ fontSize: '14px', fontWeight: '800', marginBottom: '16px', color: 'var(--text-secondary)' }}>系统设置</h3>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid var(--border)' }}>
+          <div>
+            <p style={{ fontSize: '14px', fontWeight: '600' }}>显示模式</p>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>当前：{theme === 'dark' ? '深色模式' : '浅色模式'}</p>
+          </div>
+          <button
+            className="btn-ghost"
+            onClick={toggleTheme}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              color: 'var(--accent)',
+              padding: '6px 12px', borderRadius: '100px', border: '1px solid'
+            }}
+          >
+            {theme === 'dark' ? <Moon size={14} /> : <Sun size={14} />}
+            {theme === 'dark' ? '深色' : '浅色'}
+          </button>
+        </div>
 
         {/* Push Notification Section */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid var(--border)' }}>

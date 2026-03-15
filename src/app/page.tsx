@@ -554,7 +554,7 @@ export default function HomePage() {
         <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '14px', fontWeight: '600' }}>
           记录新动态
         </p>
-        <div style={{ position: 'relative' }}>
+        <div>
           <textarea
             ref={textareaRef}
             className="input"
@@ -568,41 +568,58 @@ export default function HomePage() {
               }
             }}
             placeholder={`今天买了两个冰淇淋，一共25元\n给${partnerName}买了一件外套，大概399`}
-            style={{ paddingRight: '48px', minHeight: '90px' }}
+            style={{ minHeight: '100px', padding: '16px', fontSize: '15px', lineHeight: '1.6' }}
             disabled={isParsing || !!preview}
           />
+        </div>
+
+        {/* Toolbar Below Input */}
+        <div style={{ display: 'flex', marginTop: '14px', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="btn-ghost"
+              style={{ 
+                display: 'flex', alignItems: 'center', gap: '6px', 
+                padding: '10px 14px', fontSize: '13px', borderRadius: '12px', 
+                background: 'var(--bg-secondary)', color: 'var(--text-secondary)' 
+              }}
+              disabled={isParsing || !!preview}
+            >
+              <ImageIcon size={18} strokeWidth={2} />
+              {images.length > 0 && <span>{images.length}</span>}
+            </button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImageSelect}
+              multiple
+              accept="image/*"
+              style={{ display: 'none' }}
+            />
+          </div>
+
           <button
             onClick={handleSubmit}
             disabled={!text.trim() || isParsing || !!preview}
             className="btn-primary"
             style={{
-              position: 'absolute', right: '8px', bottom: '8px',
-              width: '40px', height: '40px', borderRadius: '12px',
-              padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center'
+              padding: '10px 24px', 
+              borderRadius: '12px',
+              display: 'flex', alignItems: 'center', gap: '8px',
+              opacity: !text.trim() ? 0.5 : 1,
+              flexShrink: 0
             }}
           >
-            {isParsing ? <div className="spinner" style={{ width: '16px', height: '16px' }} /> : <ArrowUp size={20} />}
+            {isParsing ? (
+              <div className="spinner" style={{ width: '16px', height: '16px' }} />
+            ) : (
+              <>
+                <span style={{ fontSize: '14px', fontWeight: '700' }}>识别动态</span>
+                <ArrowUp size={18} strokeWidth={2.5} />
+              </>
+            )}
           </button>
-        </div>
-
-        {/* Toolbar Below Input */}
-        <div style={{ display: 'flex', marginTop: '12px', alignItems: 'center', gap: '8px' }}>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="btn-ghost"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '13px', borderRadius: '100px', background: 'var(--bg-secondary)' }}
-            disabled={isParsing || !!preview}
-          >
-            <ImageIcon size={16} /> 附加图片 ({images.length})
-          </button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleImageSelect}
-            multiple
-            accept="image/*"
-            style={{ display: 'none' }}
-          />
         </div>
 
         {/* Selected Image Previews */}

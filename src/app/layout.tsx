@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { ThemeProvider } from '@/context/ThemeContext'
 import { IdentityProvider } from '@/context/IdentityContext'
 import AppShell from '@/components/AppShell'
 import { cookies } from 'next/headers'
@@ -15,10 +16,6 @@ export const metadata: Metadata = {
   },
 }
 
-export const viewport = {
-  themeColor: '#0f0e0d',
-}
-
 export default async function RootLayout({
   children,
 }: {
@@ -28,15 +25,18 @@ export default async function RootLayout({
   const initialIdentity = (cookieStore.get('werecord_identity')?.value as UserType) || null
 
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL} />
         <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL} />
+        <meta name="theme-color" content="#0f0e0d" />
       </head>
       <body suppressHydrationWarning>
-        <IdentityProvider>
-          <AppShell>{children}</AppShell>
-        </IdentityProvider>
+        <ThemeProvider>
+          <IdentityProvider>
+            <AppShell>{children}</AppShell>
+          </IdentityProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

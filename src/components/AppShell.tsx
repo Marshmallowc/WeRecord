@@ -31,7 +31,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* Top bar - cleaner */}
       {!isLoginPage && (
         <header className="glass" style={{
-          padding: '16px 20px',
+          padding: '12px 20px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           position: 'sticky', top: 0, zIndex: 40,
           borderBottom: '1px solid var(--border)',
