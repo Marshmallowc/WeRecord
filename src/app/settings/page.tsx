@@ -97,7 +97,7 @@ export default function SettingsPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      
+
       setMessage({ text: '双方绑定成功！同步中...', ok: true })
       await refreshProfiles()
       setTimeout(() => window.location.reload(), 1500)
@@ -337,16 +337,16 @@ export default function SettingsPage() {
         <div style={{ marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid var(--border)' }}>
           <h4 style={{ fontSize: '13px', fontWeight: '700', marginBottom: '12px', color: 'var(--text-muted)' }}>账户密码</h4>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <input 
+            <input
               type="password"
-              className="input" 
-              placeholder="设置新密码 (至少6位)" 
+              className="input"
+              placeholder="设置新密码 (至少6位)"
               value={newPassword}
               onChange={e => setNewPassword(e.target.value)}
               style={{ flex: 1 }}
             />
-            <button 
-              className="btn btn-primary" 
+            <button
+              className="btn btn-primary"
               onClick={handleUpdatePassword}
               disabled={isUpdatingPassword || !newPassword}
               style={{ width: '80px', padding: 0, fontSize: '12px' }}
@@ -361,7 +361,7 @@ export default function SettingsPage() {
 
         <div style={{ marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid var(--border)' }}>
           <h4 style={{ fontSize: '13px', fontWeight: '700', marginBottom: '12px', color: 'var(--text-muted)' }}>伙伴绑定</h4>
-          
+
           {profile?.couple_id ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--bg-secondary)', padding: '12px', borderRadius: '12px' }}>
               <div style={{ width: '40px', height: '40px', borderRadius: '12px', overflow: 'hidden', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -391,15 +391,15 @@ export default function SettingsPage() {
               </div>
 
               <div style={{ display: 'flex', gap: '8px' }}>
-                <input 
-                  className="input" 
-                  placeholder="输入对方的邀请码" 
+                <input
+                  className="input"
+                  placeholder="输入对方的邀请码"
                   value={inputCode}
                   onChange={e => setInputCode(e.target.value.toUpperCase())}
                   style={{ flex: 1, textTransform: 'uppercase', letterSpacing: '2px' }}
                 />
-                <button 
-                  className="btn-primary" 
+                <button
+                  className="btn-primary"
                   onClick={handleJoin}
                   disabled={isBinding || !inputCode}
                   style={{ width: '80px', padding: 0 }}
@@ -420,9 +420,6 @@ export default function SettingsPage() {
             <LogOut size={14} /> 退出登录
           </button>
         </div>
-      </div>
-      <div style={{ position: 'absolute', bottom: '32px', fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '1px', opacity: 0.5 }}>
-        WERE CORD | PREMIUM EXPERIENCE
       </div>
     </div>
   )

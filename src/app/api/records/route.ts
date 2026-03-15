@@ -20,10 +20,13 @@ export async function GET(req: NextRequest) {
   const category = searchParams.get('category')
   const payer = searchParams.get('payer')
   const type = searchParams.get('type') // 'gift' or 'aa'
+  const includeInsights = searchParams.get('include_insights') === 'true'
 
   let giftQuery = supabase.from('gifts').select('id, from_user, to_user, title, amount, description, category, source_text, image_urls, date, created_at')
     .eq('couple_id', coupleId)
   let billQuery = supabase.from('aa_bills').select('id, payer, status, total_amount, my_share, source_text, note, image_urls, date, created_at, aa_items(id, name, amount, category)')
+    .eq('couple_id', coupleId)
+  let insightQuery = supabase.from('ai_insights').select('id, content, insight_type, date, created_at')
     .eq('couple_id', coupleId)
 
   // Apply filters
@@ -39,19 +42,31 @@ export async function GET(req: NextRequest) {
     billQuery = billQuery.eq('payer', payer)
   }
 
-  const [giftsRes, billsRes] = await Promise.all([
+  const queries = [
     giftQuery.order('created_at', { ascending: false }).limit(limit),
     billQuery.order('created_at', { ascending: false }).limit(limit),
-  ])
+  ]
 
-  let giftItems = (giftsRes.data ?? []).map(g => ({ ...g, record_type: 'gift' }))
-  let billItems = (billsRes.data ?? []).map(b => ({ ...b, record_type: 'aa' }))
+  // Only include insights if explicitly requested or if type is 'insight'
+  const shouldIncludeInsights = includeInsights || type === 'insight'
+  if (shouldIncludeInsights) {
+    queries.push(insightQuery.order('created_at', { ascending: false }).limit(limit))
+  }
+
+  const results = await Promise.all(queries)
+  const giftsRes = results[0] as any
+  const billsRes = results[1] as any
+  const insightsRes = shouldIncludeInsights ? results[2] as any : { data: [] }
+
+  const giftItems = (giftsRes.data ?? []).map((g: any) => ({ ...g, record_type: 'gift' }))
+  let billItems = (billsRes.data ?? []).map((b: any) => ({ ...b, record_type: 'aa' }))
+  const insightItems = (insightsRes.data ?? []).map((i: any) => ({ ...i, record_type: 'insight' }))
 
   if (category) {
     billItems = billItems.filter(b => b.aa_items?.some((i: any) => i.category === category))
   }
 
-  let combined = [...giftItems, ...billItems]
+  let combined = [...giftItems, ...billItems, ...insightItems]
 
   if (type) {
     combined = combined.filter(r => r.record_type === type)
@@ -123,6 +138,8 @@ export async function DELETE(req: NextRequest) {
 
   if (type === 'gift') {
     await supabase.from('gifts').delete().eq('id', id).eq('couple_id', profile.couple_id)
+  } else if (type === 'insight') {
+    await supabase.from('ai_insights').delete().eq('id', id).eq('couple_id', profile.couple_id)
   } else {
     await supabase.from('aa_bills').delete().eq('id', id).eq('couple_id', profile.couple_id)
   }

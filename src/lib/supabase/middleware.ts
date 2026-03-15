@@ -64,6 +64,7 @@ export async function updateSession(request: NextRequest) {
     !user &&
     !request.nextUrl.pathname.startsWith('/login') &&
     !request.nextUrl.pathname.startsWith('/auth') &&
+    !request.nextUrl.pathname.startsWith('/api') && // API 路由应由各自的处理函数负责鉴权，不自动重定向
     !request.nextUrl.pathname.includes('.') && // 排除带后缀的文件如 favicon.ico, manifest.json
     !request.nextUrl.pathname.startsWith('/_next') // 排除 Next.js 内部文件
   ) {

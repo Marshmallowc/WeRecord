@@ -3,16 +3,18 @@
 import { useState } from 'react'
 import { useIdentity } from '@/context/IdentityContext'
 import useSWR from 'swr'
-import { Activity, RefreshCw } from 'lucide-react'
+import { Activity, RefreshCw, Trash2 } from 'lucide-react'
 
 const fetcher = (url: string) => fetch(url).then(res => res.json())
 
 interface RecordItem {
   id: string
-  record_type: 'gift' | 'aa'
+  record_type: 'gift' | 'aa' | 'insight'
   created_at: string
   date: string
   source_text: string
+  content?: string // For AI insights
+  insight_type?: string
   category?: string | null
   from_user?: string
   to_user?: string
@@ -29,13 +31,24 @@ export default function MomentsPage() {
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null)
 
   const { data: recordsData, error, isLoading, isValidating, mutate } = useSWR(
-    '/api/records?limit=100', // Fetch more for the moments feed
+    '/api/records?limit=100&include_insights=true', // Fetch more for the moments feed
     fetcher,
     {
       revalidateOnFocus: false,
       dedupingInterval: 15000,
     }
   )
+
+  async function handleDelete(id: string, type: string) {
+    if (!confirm('确定要删除这条动态吗？')) return
+    try {
+      const res = await fetch(`/api/records?id=${id}&type=${type}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Delete failed')
+      mutate()
+    } catch (err) {
+      alert('删除失败，请稍后重试')
+    }
+  }
 
   const records = recordsData?.data ?? []
   const displayRecords = [...pendingUploads, ...records]
@@ -62,7 +75,6 @@ export default function MomentsPage() {
 
   return (
     <div style={{ maxWidth: '100%', paddingBottom: '40px' }}>
-      {/* Header Area */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h2 style={{ fontSize: '20px', fontWeight: '800', color: 'var(--text-primary)' }}>动态</h2>
         <button
@@ -90,6 +102,51 @@ export default function MomentsPage() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {displayRecords.map((record: RecordItem) => {
+            if (record.record_type === 'insight') {
+              return (
+                <div key={record.id} style={{
+                  display: 'flex',
+                  gap: '12px',
+                  padding: '20px 0',
+                  borderBottom: '1px solid var(--border)'
+                }}>
+                  {/* AI Avatar */}
+                  <div style={{ flexShrink: 0 }}>
+                    <div style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '8px',
+                      background: 'var(--bg-secondary)',
+                      overflow: 'hidden',
+                      border: '1px solid var(--border)'
+                    }}>
+                      <img src="/ai-avatar.svg" alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--indigo)' }}>
+                        Mason
+                      </div>
+                    </div>
+                    <div style={{
+                      fontSize: '15px',
+                      color: 'var(--text-primary)',
+                      lineHeight: '1.6',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      marginBottom: '10px'
+                    }}>
+                      {record.content}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                      {formatMomentTime(record.created_at)} · AI见解
+                    </div>
+                  </div>
+                </div>
+              )
+            }
+
             // Determine author of the post based on record type
             const postAuthorId = record.record_type === 'gift' ? record.from_user : record.payer
 
