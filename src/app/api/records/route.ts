@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
     billQuery = billQuery.eq('payer', payer)
   }
 
-  const queries = [
+  const queries: any[] = [
     giftQuery.order('created_at', { ascending: false }).limit(limit),
     billQuery.order('created_at', { ascending: false }).limit(limit),
   ]
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
   const insightItems = (insightsRes.data ?? []).map((i: any) => ({ ...i, record_type: 'insight' }))
 
   if (category) {
-    billItems = billItems.filter(b => b.aa_items?.some((i: any) => i.category === category))
+    billItems = billItems.filter((b: any) => b.aa_items?.some((i: any) => i.category === category))
   }
 
   let combined = [...giftItems, ...billItems, ...insightItems]
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
     combined = combined.filter(r => r.record_type === type)
   }
 
-  combined = combined.sort((a, b) => {
+  combined = combined.sort((a: any, b: any) => {
     const d1 = new Date(a.date).getTime()
     const d2 = new Date(b.date).getTime()
     if (d1 !== d2) return d2 - d1
