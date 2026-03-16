@@ -1,85 +1,86 @@
 # WeRecord
 
-WeRecord is a sophisticated financial management application mathematically designed for couples to track shared expenses, personal gifts, and mutual debt trajectories with high precision. The system integrates advanced analytical dashboards and AI-driven insights to transform raw transactional data into meaningful relationship milestones.
+WeRecord is a premium financial management ecosystem meticulously engineered for couples to bridge the transparency gap in shared living. It transforms mundane transaction tracking into meaningful relationship milestones through high-precision expense logging, gift archiving, and AI-driven behavioral insights.
 
 English | [简体中文](README_zh.md)
 
-## Technical Architecture & Core Advantages
+## Core Value Proposition
 
-The project is built on a modern, highly optimized web stack prioritizing instant loading, deterministic state management, and robust backend scalability.
+- **Transparency & Harmony**: Eliminate "who spent what" friction with real-time shared ledgers.
+- **Gift Archiving**: Never lose track of thoughtful moments; a dedicated space for personal gifts and mutual appreciation.
+- **AI-Driven Clarity**: Leverages DeepSeek to parse natural language and generate deeply personal financial insights.
+- **Micro-Settle**: Batch settlement for AA bills with a single-click experience, designed for modern mobile workflows.
 
-### Core Stack
-- **Framework**: Next.js 14+ (App Router)
-- **Language**: TypeScript (Strict Mode)
-- **Database Backend**: Supabase (PostgreSQL, Storage, Realtime)
-- **Styling**: Vanilla CSS engineered with a strict Design Token System
-- **State & Data Fetching**: SWR (Stale-While-Revalidate)
-- **AI Integration**: DeepSeek API for natural language entity extraction and structural analytics
+## Technical Architecture & Engineering Excellence
 
-### Engineering Highlights & Advantages
+The system is built on a state-of-the-art web stack, prioritizing deterministic state, zero-layout-shift navigation, and robust backend integrity.
 
-#### 1. Zero-Latency Navigation & Data Hydration
-The application employs an aggressive caching strategy using `SWR` combined with Next.js Client Components. By stripping away heavy Server Component blocking on navigational pages, the application achieves instantaneous page transitions (Zero-Layout-Shift). Legacy cache data is served immediately while silently revalidating in the background, ensuring data freshness without sacrificing perceived performance.
+### Modern Stack
+- **Framework**: [Next.js 16](https://nextjs.org/) (App Router, Server Actions)
+- **Library**: [React 19](https://react.dev/) (Concurrent Mode, Actions)
+- **Language**: TypeScript 5.x (Strict Type Safety)
+- **Backend**: [Supabase](https://supabase.com/) (PostgreSQL + RLS, Storage, Realtime)
+- **AI**: DeepSeek API (Natural Language Processing & Analytical Insights)
+- **UI**: Vanilla CSS with a strict **Design Token System** for performance and precision.
 
-#### 2. Progressive Web App (PWA) Capabilities
-Architected natively as a PWA, WeRecord features a custom Service Worker implementation (`sw.js`) and manifest configuration. This allows the application to be installed across mobile operating systems with a native-like experience. Crucially, it integrates the Web Push API for real-time transactional alerts, maintaining persistent communication channels even when the application is closed.
+### Engineering Highlights
 
-#### 3. Intelligent State Persistence
-User identity and session states are managed through a hybrid model utilizing HTTP-only cookies and `localStorage`. This ensures that Next.js Server Components possess identical identity context during initial renders as Client Components, preventing hydration mismatches and cascading UI reflows on load.
+#### 1. Zero-Latency Hydration (SWR Integration)
+WeRecord utilizes an aggressive `SWR` (Stale-While-Revalidate) strategy. By serving stale data from local cache while fetching updates in the background, the application achieves a "native-app" feel with immediate response times and zero blocking UI waterfalls.
 
-#### 4. Token-Driven Vanilla CSS
-Deviating from utility-first frameworks, WeRecord adopts a heavily structured vanilla CSS architecture (`globals.css`). Utilizing CSS custom properties (variables) for theme tokens (colors, typography, spacing), it ensures mathematical precision in UI components like Glassmorphism variants and complex gradient borders. This drastically reduces the calculated CSS bundle size while maintaining fluid animations and transitions via hardware acceleration.
+#### 2. AI Intelligence Layer
+The integration with DeepSeek goes beyond simple parsing. The system analyzes spending patterns to offer **AI Insights**, helping couples understand their financial trajectory and celebrate saving milestones together.
 
-#### 5. AI-Powered Entity Extraction
-The system interfaces directly with the DeepSeek API through secure Vercel edge/serverless functions. It parses unstructured, natural language input (e.g., "I paid $50 for dinner today") and deterministically maps it to strict database schemas (Amount, Category, Payer, Participant Split) bypassing conventional, form-heavy data entry requirements.
+#### 3. Moments & Media
+A dedicated **Moments Feed** allows users to attach image evidence or memories to specific records. High-efficiency image compression is performed client-side via `browser-image-compression` before being securely stored in Supabase Storage.
 
-#### 6. Database Level Integrity
-Powered by Supabase's underlying PostgreSQL engine, data access is secured cryptographically through Row Level Security (RLS) policies. Relational integrity between users, shared bills (`aa_bills`), categorized items (`aa_items`), and independent gifts (`gifts`) is enforced natively at the database level.
+#### 4. High-Fidelity Design System
+Rejecting utility-first bloat, we implement a custom **Vanilla CSS architecture**. It employs glassmorphism, hardware-accelerated animations, and responsive layouts tailored for a mobile-first experience. Playful SVG characters add a "human touch" to the minimalist interface.
 
-## Installation and Local Setup
+#### 5. Native PWA & Web Push
+Fully compliant with PWA standards, WeRecord includes a custom Service Worker for offline capabilities and leverages the Web Push API for real-time notifications, ensuring couples stay synchronized even when the app is closed.
+
+## Installation & Setup
 
 ### Prerequisites
-- Node.js 18.0 or higher
-- A configured Supabase Project
-- Active DeepSeek API Access credentials
+- Node.js 20.x or higher
+- A Supabase Project (Schema provided in `supabase_schema.sql`)
+- DeepSeek API Access
 
-### Initialization Sequence
+### Setup Sequence
 
-1. **Clone the Repository**
+1. **Clone & Install**
    ```bash
    git clone git@github.com:Marshmallowc/WeRecord.git
    cd WeRecord
+   npm install
    ```
 
 2. **Environment Configuration**
-   Provision a `.env.local` file in the root directory mirroring the required cryptographic keys and endpoints:
+   Create a `.env.local` file:
    ```env
    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
    DEEPSEEK_API_KEY=your_deepseek_api_key
    ```
 
-3. **Database Migration**
-   Execute the `supabase_schema.sql` script within the Supabase SQL Editor to initialize the relational schema, provision Storage buckets, and apply restrictive Row Level Security (RLS) policies.
+3. **Database Setup**
+   Run `supabase_schema.sql` and `ai_insights_schema.sql` in your Supabase SQL editor to initialize tables, RLS policies, and storage buckets.
 
-4. **Dependency Installation**
-   ```bash
-   npm install
-   ```
-
-5. **Execution**
+4. **Run Development Server**
    ```bash
    npm run dev
    ```
 
-## Repository Structure
+## Repository Topology
 
-- `/src/app`: Primary routing configuration, API endpoints, and layout structures (Next.js App Router).
-- `/src/components`: Granular, reusable React UI interfaces.
-- `/src/context`: React Context providers for global orchestration (IdentityContext, NotificationContext).
-- `/src/lib`: Core logical utilities, cryptographic functions, and Supabase client singletons.
-- `/public`: Static web assets, manifest definitions, and the Service Worker registration file.
+- `/src/app`: Routes, API Handlers, and Global Layouts.
+- `/src/components`: Atomic UI components and interactive modules.
+- `/src/context`: Global state orchestration (Auth, Notifications).
+- `/src/lib`: Core logic, Supabase clients, and AI integration utilities.
+- `/public`: Static assets, PWA manifest, and Service Worker.
 
-## Deployment Specifications
+## Deployment
 
-The codebase is highly optimized for deployment environments supporting Serverless edge functions (e.g., Vercel). Pre-deployment checks must ensure that environment variables for Supabase REST endpoints and AI API endpoints are symmetrically configured in the production hosting dashboard.
+Optimized for **Vercel**. Ensure all environment variables are mirrored in your Vercel project settings for seamless deployment of Edge and Serverless functions.
+

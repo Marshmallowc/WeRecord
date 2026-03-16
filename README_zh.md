@@ -1,34 +1,89 @@
-# WeRecord - 情侣财务管理系统
+# WeRecord - 情侣财务管理生态系统
 
-WeRecord 是一款专为情侣设计的精细化财务管理应用程序，旨在精确追踪共享支出、个人礼物以及双方的债务轨迹。系统集成了高级分析看板与人工智能驱动的洞察功能，将核心交易数据转化为具有实际指导意义的关系里程碑。
+WeRecord 是一款专为情侣设计的顶级财务管理生态系统，旨在通过技术手段弥合共同生活中的信息不对称。它不仅能进行高精度的支出记录，还能通过 AI 驱动的见解和礼物记录功能，将日常的账目转化为具有纪念意义的关系里程碑。
 
 [English](README.md) | 简体中文
 
-## 技术架构与核心优势
+## 核心价值主张
 
-本项目基于现代化的、针对性能高度优化的 Web 技术栈构建，优先保证页面的瞬时加载、确定性的状态管理以及后端的高可扩展性。
+- **透明与和谐**：通过实时共享账本，彻底消除“谁花了多少”的摩擦。
+- **礼物收藏夹**：专门的空间记录每一份心意，确保双方的付出都被铭记。
+- **AI 智能洞察**：接入 DeepSeek，解析自然语言输入并生成深度的财务行为分析。
+- **快速结算**：针对现代移动端优化的 AA 账单批量结算体验，一键理清多笔债务。
 
-### 核心技术栈
-- **框架**: Next.js 14+ (App Router)
-- **语言**: TypeScript (严格模式)
-- **数据库组件**: Supabase (PostgreSQL, 存储机制, 实时通信)
-- **样式架构**: 基于严格的设计令牌 (Design Token) 系统的 Vanilla CSS
-- **状态与请求缓存**: SWR (Stale-While-Revalidate)
-- **AI 综合集成**: 接入 DeepSeek API 进行自然语言实体抽取及结构化分析
+## 技术架构与工程卓越性
 
-### 工程亮点与技术优势
+本项目基于最前沿的 Web 技术栈构建，优先保证状态的确定性、无偏移的页面导航以及高度的后端数据安全性。
 
-#### 1. 零延迟导航与数据注入 (Waterfalls Elimination)
-系统广泛采用了 `SWR` 结合 Next.js Client Components 的激进缓存策略。通过剥离导航页面中繁重的 Server Component 阻塞机制，应用实现了页面的瞬时切换（摒弃布局偏移）。客户端首先命中本地缓存渲染旧数据，并在后台静默发起网络请求以进行数据校验与更新，此机制兼顾了操作的流畅性与数据的实时一致性。
+### 现代化技术栈
+- **框架**: [Next.js 16](https://nextjs.org/) (App Router, Server Actions)
+- **库**: [React 19](https://react.dev/) (Concurrent Mode, Actions)
+- **语言**: TypeScript 5.x (严格类型安全)
+- **后端**: [Supabase](https://supabase.com/) (PostgreSQL + RLS, Storage, Realtime)
+- **AI**: DeepSeek API (自然语言处理与结构化分析)
+- **样式**: 基于严格**设计令牌 (Design Token)** 系统的 Vanilla CSS，追求极致性能。
 
-#### 2. 渐进式 Web 应用 (PWA) 深度集成
-在架构层面原生支持 PWA 标准，自主实现了 Service Worker (`sw.js`) 与 Manifest 配置。这使得应用能在主流行移动操作系统内直接安装，提供类原生的应用体验。更重要的是，系统通过 Service Worker 集成了 Web Push API，保障了脱离浏览器前台环境下的实时账目变更通知推送。
+### 工程亮点
 
-#### 3. 智能且严谨的状态持久化
-用户标识与会话状态由 HTTP-only Cookies 与 `localStorage` 进行混合驱动。该模型确保 Next.js 在服务端组件渲染初期即可获取与客户端组件完全对称的身份上下文结构，从而规避了水合 (Hydration) 阶段因数据不对等引发的页面重绘。
+#### 1. 零延迟水合 (SWR 深度集成)
+WeRecord 采用激进的 `SWR` (Stale-While-Revalidate) 缓存策略。通过先展示本地缓存数据，同时在后台静默更新，实现类原生应用的流畅感受，彻底告别 UI 阻塞。
 
-#### 4. 驱动于令牌体系的纯正 CSS
-区别于传统 Utility-first 的类库框架，WeRecord 贯彻了一套具有严密逻辑层级的原生 CSS 架构 (`globals.css`)。采用 CSS 变量形式贯穿主题系统中的色彩、文字规范与间距控制，保证了微交互模块（如玻璃态遮罩及复杂渐变边框）在渲染时的数学级精确性，有效缩减了 CSS 产物体积并最大化利用硬件级加速。
+#### 2. AI 洞察引擎
+不仅仅是数据提取。系统通过分析消费模式，提供 **AI 洞察 (AI Insights)**，帮助情侣理解财务轨迹，共同庆祝每一个理财里程碑。
+
+#### 3. 动态时刻 (Moments)
+专属的 **Moments 动态流**支持为记录附加图片凭据或生活记忆。通过 `browser-image-compression` 进行客户端高效压缩，安全存储于 Supabase。
+
+#### 4. 高保真设计系统
+我们拒绝过度膨胀的工具库，采用全手写的 **Vanilla CSS 架构**。集成了玻璃拟态 (Glassmorphism)、硬件加速动画和移动端优先的自适应布局。灵动的 SVG 角色为极简界面注入了“人情味”。
+
+#### 5. 原生 PWA 与 Web 推送
+完全遵循 PWA 标准，自主实现 Service Worker。通过 Web Push API 提供即时通知，即使应用未处于前台，也能确保情侣间的财务动态实时同步。
+
+## 安装与开发环境部署
+
+### 前置条件
+- Node.js 20.x 或更高版本
+- 可用的 Supabase 项目 (表结构见 `supabase_schema.sql`)
+- DeepSeek API 访问权限
+
+### 初始化流程
+
+1. **克隆与安装**
+   ```bash
+   git clone git@github.com:Marshmallowc/WeRecord.git
+   cd WeRecord
+   npm install
+   ```
+
+2. **环境变量配置**
+   创建 `.env.local` 文件：
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   DEEPSEEK_API_KEY=your_deepseek_api_key
+   ```
+
+3. **数据库初始化**
+   在 Supabase SQL 执行器中依次运行 `supabase_schema.sql` 和 `ai_insights_schema.sql`，配置表结构、RLS 策略和存储桶。
+
+4. **启动开发服务器**
+   ```bash
+   npm run dev
+   ```
+
+## 代码拓扑结构
+
+- `/src/app`: 路由定义、API 处理器及全局布局。
+- `/src/components`: 原子化 UI 组件与交互模块。
+- `/src/context`: 全局状态编排 (身份验证、通知)。
+- `/src/lib`: 核心逻辑抽象、Supabase 客户端及 AI 集成工具。
+- `/public`: 静态资源、PWA 配置及 Service Worker 入口。
+
+## 生产环境部署
+
+针对 **Vercel** 进行了深度优化。部署前请确保生产环境已注入 Supabase 节点、AI 密钥等环境变量，以保障 Edge/Serverless 函数的正常运行。
+级加速。
 
 #### 5. AI 赋能的实体识别与映射
 后端服务基于 Vercel Edge 环境建立对 DeepSeek API 的安全请求通道。引擎能够对用户输入的非结构化自然语言（例如：“今天我付了50元晚饭钱”）进行解析，并转化为高度结构化的数据库映射关系（金额、类别、支付方、分担逻辑），从根本上避免了传统管理应用中繁冗的表单交互。
