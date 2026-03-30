@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useIdentity } from '@/context/IdentityContext'
 import { useTheme } from '@/context/ThemeContext'
 import { createClient } from '@/lib/supabase/client'
-import { User, Check, Camera, RefreshCw, Bell, BellOff, LogOut, Link2, Copy, Send, Moon, Sun } from 'lucide-react'
+import { User, Check, Camera, RefreshCw, Bell, BellOff, LogOut, Link2, Copy, Send, Moon, Sun, Plus } from 'lucide-react'
 import { urlBase64ToUint8Array } from '@/lib/utils'
 
 const AVATARS = [
@@ -13,7 +13,6 @@ const AVATARS = [
   'https://api.dicebear.com/9.x/adventurer/svg?seed=George',
   'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka',
   'https://api.dicebear.com/7.x/avataaars/svg?seed=Bastian',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=Sasha',
 ]
 
 export default function SettingsPage() {
@@ -34,7 +33,9 @@ export default function SettingsPage() {
   const [isBinding, setIsBinding] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
   const hasFetchedInviteCode = useRef(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Sync with context when data arrives
   useEffect(() => {
@@ -186,6 +187,43 @@ export default function SettingsPage() {
     }
   }
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // 限制 5MB
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage({ text: '图片不能超过 5MB', ok: false })
+      return
+    }
+
+    setIsUploading(true)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${user?.id}-${Math.random().toString(36).substring(2)}.${fileExt}`
+      const filePath = `avatars/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('record_images')
+        .upload(filePath, file)
+
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('record_images')
+        .getPublicUrl(filePath)
+
+      setSelectedAvatar(publicUrl)
+      setMessage({ text: '图片上传成功', ok: true })
+    } catch (error: any) {
+      console.error('Upload failed:', error)
+      setMessage({ text: '图片上传失败，请重试', ok: false })
+    } finally {
+      setIsUploading(false)
+      setTimeout(() => setMessage(null), 3000)
+    }
+  }
+
   return (
     <div className="fade-in" style={{ paddingBottom: '40px' }}>
       <div style={{ marginBottom: '32px', textAlign: 'center' }}>
@@ -194,7 +232,7 @@ export default function SettingsPage() {
             <img
               src={selectedAvatar}
               alt="Avatar"
-              style={{ width: '100%', height: '100%', borderRadius: '30px', background: 'var(--bg-secondary)', border: '2px solid var(--accent)' }}
+              style={{ width: '100%', height: '100%', borderRadius: '30px', background: 'var(--bg-secondary)', border: '2px solid var(--accent)', objectFit: 'cover' }}
             />
           ) : (
             <div style={{ width: '100%', height: '100%', borderRadius: '30px', background: 'var(--bg-secondary)', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -256,10 +294,11 @@ export default function SettingsPage() {
                 style={{
                   position: 'relative', cursor: 'pointer', borderRadius: '50%',
                   overflow: 'hidden', border: selectedAvatar === url ? '2px solid var(--accent)' : '2px solid transparent',
-                  background: 'var(--bg-secondary)', padding: '4px'
+                  background: 'var(--bg-secondary)', padding: '0',
+                  aspectRatio: '1/1'
                 }}
               >
-                <img src={url} alt="Avatar Option" style={{ width: '100%', borderRadius: '50%' }} />
+                <img src={url} alt="Avatar Option" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 {selectedAvatar === url && (
                   <div style={{ position: 'absolute', top: '4px', right: '4px', background: 'var(--accent)', borderRadius: '50%', width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Check size={10} color="#fff" />
@@ -267,7 +306,44 @@ export default function SettingsPage() {
                 )}
               </div>
             ))}
+
+            {/* Custom Upload Button */}
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                position: 'relative', cursor: 'pointer', borderRadius: '50%',
+                overflow: 'hidden', border: (selectedAvatar && !AVATARS.includes(selectedAvatar)) ? '2px solid var(--accent)' : '2px solid transparent',
+                background: 'var(--bg-secondary)', padding: '0',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                aspectRatio: '1/1'
+              }}
+            >
+              {isUploading ? (
+                <RefreshCw size={20} className="spin" color="var(--accent)" />
+              ) : (selectedAvatar && !AVATARS.includes(selectedAvatar)) ? (
+                <img src={selectedAvatar} alt="Custom" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                  <Plus size={20} color="var(--text-muted)" />
+                  <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>自定义</span>
+                </div>
+              )}
+              
+              {(selectedAvatar && !AVATARS.includes(selectedAvatar)) && (
+                <div style={{ position: 'absolute', top: '4px', right: '4px', background: 'var(--accent)', borderRadius: '50%', width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Check size={10} color="#fff" />
+                </div>
+              )}
+            </div>
           </div>
+          
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/*"
+            style={{ display: 'none' }}
+          />
         </div>
 
         <button
