@@ -58,8 +58,6 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  console.log('[Middleware] User:', user?.email || 'None', 'Path:', request.nextUrl.pathname)
-
   if (
     !user &&
     !request.nextUrl.pathname.startsWith('/login') &&
@@ -68,7 +66,6 @@ export async function updateSession(request: NextRequest) {
     !request.nextUrl.pathname.includes('.') && // 排除带后缀的文件如 favicon.ico, manifest.json
     !request.nextUrl.pathname.startsWith('/_next') // 排除 Next.js 内部文件
   ) {
-    console.log('[Middleware] Redirecting to /login')
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)

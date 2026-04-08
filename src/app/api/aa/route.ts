@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
 // GET: fetch AA bills with items
 export async function GET(req: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabase.from('profiles').select('couple_id').eq('id', user.id).single()
+  if (!profile?.couple_id) return NextResponse.json({ data: [] })
+
   const { searchParams } = new URL(req.url)
   const status = searchParams.get('status')
   const payer = searchParams.get('payer')
@@ -17,6 +19,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from('aa_bills')
     .select('*, aa_items(*)')
+    .eq('couple_id', profile.couple_id)
     .order('date', { ascending: false })
 
   if (status) query = query.eq('status', status)
@@ -29,6 +32,13 @@ export async function GET(req: NextRequest) {
 
 // POST: create AA bill with items
 export async function POST(req: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabase.from('profiles').select('couple_id').eq('id', user.id).single()
+  if (!profile?.couple_id) return NextResponse.json({ error: '请先在设置中绑定伙伴' }, { status: 403 })
+
   const body = await req.json()
   const { payer, items, total_amount, my_share, source_text, note, date } = body
 
@@ -40,6 +50,7 @@ export async function POST(req: NextRequest) {
   const { data: bill, error: billError } = await supabase
     .from('aa_bills')
     .insert([{
+      couple_id: profile.couple_id,
       payer,
       status: 'pending',
       total_amount,
@@ -69,6 +80,13 @@ export async function POST(req: NextRequest) {
 
 // PATCH: update bill status (settle)
 export async function PATCH(req: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabase.from('profiles').select('couple_id').eq('id', user.id).single()
+  if (!profile?.couple_id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   const body = await req.json()
   const { id, status } = body
 
@@ -78,6 +96,7 @@ export async function PATCH(req: NextRequest) {
     .from('aa_bills')
     .update({ status })
     .eq('id', id)
+    .eq('couple_id', profile.couple_id)
     .select()
     .single()
 
@@ -87,12 +106,19 @@ export async function PATCH(req: NextRequest) {
 
 // DELETE: remove bill (cascades to items via FK)
 export async function DELETE(req: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabase.from('profiles').select('couple_id').eq('id', user.id).single()
+  if (!profile?.couple_id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   const { searchParams } = new URL(req.url)
   const id = searchParams.get('id')
 
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
 
-  const { error } = await supabase.from('aa_bills').delete().eq('id', id)
+  const { error } = await supabase.from('aa_bills').delete().eq('id', id).eq('couple_id', profile.couple_id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })
 }

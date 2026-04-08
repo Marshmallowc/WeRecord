@@ -54,6 +54,10 @@ AA 账单 (aa)：
 5. 如果未指明支付人或送礼人，默认 payer/from 为 [当前身份]。`
 
 export async function POST(req: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { text, identity } = await req.json()
 
   if (!text) {
