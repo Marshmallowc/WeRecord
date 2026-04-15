@@ -1,0 +1,600 @@
+[     688ms] [LOG] WebSocket已连接 @ http://localhost:3002/src/stores/environment.ts:77
+[     700ms] [LOG] 服务器: 已连接到环境监控服务 @ http://localhost:3002/src/stores/environment.ts:128
+[     702ms] [WARNING] [Vue warn]: Invalid prop: type check failed for prop "value". Expected Number with value 26.9, got String with value "26.9". 
+  at <MetricCard key="temperature" name="温度" value="26.9"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[     702ms] [WARNING] [Vue warn]: Invalid prop: type check failed for prop "value". Expected Number with value 62, got String with value "62.0". 
+  at <MetricCard key="humidity" name="湿度" value="62.0"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[     703ms] [WARNING] [Vue warn]: Invalid prop: type check failed for prop "value". Expected Number with value 41.3, got String with value "41.3". 
+  at <MetricCard key="pm25" name="PM2.5" value="41.3"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[     703ms] [WARNING] [Vue warn]: Invalid prop: type check failed for prop "value". Expected Number with value 553.5, got String with value "553.5". 
+  at <MetricCard key="co2" name="CO₂" value="553.5"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[     703ms] [WARNING] [Vue warn]: Invalid prop: type check failed for prop "value". Expected Number with value 0, got String with value "0.0". 
+  at <MetricCard key="formaldehyde" name="甲醛" value="0.0"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[     703ms] [WARNING] [Vue warn]: Unhandled error during execution of render function 
+  at <MetricCard key="formaldehyde" name="甲醛" value="0.0"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[     703ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[     706ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[     715ms] TypeError: props.value.toFixed is not a function
+    at ComputedRefImpl.fn (http://localhost:3002/src/components/MetricCard.vue:23:48)
+    at refreshComputed (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:661:29)
+    at get value (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:1916:5)
+    at unref (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:1771:30)
+    at Object.get (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:1777:64)
+    at Proxy._sfc_render (http://localhost:3002/src/components/MetricCard.vue:106:35)
+    at renderComponentRoot (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6722:17)
+    at ReactiveEffect.componentUpdateFn [as fn] (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8368:26)
+    at ReactiveEffect.run (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:507:19)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8226:18)
+[     715ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[    1682ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[    1682ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[    2683ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[    2685ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[    3683ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[    3684ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[    4682ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[    4683ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[    5157ms] [WARNING] [Vue warn]: Invalid prop: type check failed for prop "value". Expected Number with value 27.2, got String with value "27.2". 
+  at <MetricCard key="temperature" name="温度" value="27.2"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[    5157ms] [WARNING] [Vue warn]: Invalid prop: type check failed for prop "value". Expected Number with value 59.8, got String with value "59.8". 
+  at <MetricCard key="humidity" name="湿度" value="59.8"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[    5157ms] [WARNING] [Vue warn]: Invalid prop: type check failed for prop "value". Expected Number with value 600.8, got String with value "600.8". 
+  at <MetricCard key="co2" name="CO₂" value="600.8"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[    5158ms] [WARNING] [Vue warn]: Invalid prop: type check failed for prop "value". Expected Number with value 0.1, got String with value "0.1". 
+  at <MetricCard key="formaldehyde" name="甲醛" value="0.1"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[    5158ms] [WARNING] [Vue warn]: Unhandled error during execution of render function 
+  at <MetricCard key="formaldehyde" name="甲醛" value="0.1"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[    5158ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[    5162ms] TypeError: props.value.toFixed is not a function
+    at ComputedRefImpl.fn (http://localhost:3002/src/components/MetricCard.vue:23:48)
+    at refreshComputed (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:661:29)
+    at get value (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:1916:5)
+    at unref (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:1771:30)
+    at Object.get (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:1777:64)
+    at Proxy._sfc_render (http://localhost:3002/src/components/MetricCard.vue:106:35)
+    at renderComponentRoot (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6722:17)
+    at ReactiveEffect.componentUpdateFn [as fn] (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8368:26)
+    at ReactiveEffect.run (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:507:19)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8226:18)
+[    5681ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[    5681ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[    6683ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[    6685ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[    7681ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[    7683ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[    8683ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[    8684ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[    9682ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[    9684ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[   10162ms] [WARNING] [Vue warn]: Invalid prop: type check failed for prop "value". Expected Number with value 26.7, got String with value "26.7". 
+  at <MetricCard key="temperature" name="温度" value="26.7"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   10163ms] [WARNING] [Vue warn]: Invalid prop: type check failed for prop "value". Expected Number with value 65, got String with value "65.0". 
+  at <MetricCard key="humidity" name="湿度" value="65.0"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   10163ms] [WARNING] [Vue warn]: Invalid prop: type check failed for prop "value". Expected Number with value 42, got String with value "42.0". 
+  at <MetricCard key="pm25" name="PM2.5" value="42.0"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   10163ms] [WARNING] [Vue warn]: Invalid prop: type check failed for prop "value". Expected Number with value 566.3, got String with value "566.3". 
+  at <MetricCard key="co2" name="CO₂" value="566.3"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   10164ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   10173ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[   10681ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   10682ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[   11682ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   11685ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[   12681ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   12682ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[   13683ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   13685ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[   14682ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   14683ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[   15169ms] [WARNING] [Vue warn]: Invalid prop: type check failed for prop "value". Expected Number with value 27.3, got String with value "27.3". 
+  at <MetricCard key="temperature" name="温度" value="27.3"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   15170ms] [WARNING] [Vue warn]: Invalid prop: type check failed for prop "value". Expected Number with value 64.3, got String with value "64.3". 
+  at <MetricCard key="humidity" name="湿度" value="64.3"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   15170ms] [WARNING] [Vue warn]: Invalid prop: type check failed for prop "value". Expected Number with value 46.8, got String with value "46.8". 
+  at <MetricCard key="pm25" name="PM2.5" value="46.8"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   15170ms] [WARNING] [Vue warn]: Invalid prop: type check failed for prop "value". Expected Number with value 530.3, got String with value "530.3". 
+  at <MetricCard key="co2" name="CO₂" value="530.3"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   15170ms] [WARNING] [Vue warn]: Invalid prop: type check failed for prop "value". Expected Number with value 0, got String with value "0.0". 
+  at <MetricCard key="formaldehyde" name="甲醛" value="0.0"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   15171ms] [WARNING] [Vue warn]: Unhandled error during execution of render function 
+  at <MetricCard key="formaldehyde" name="甲醛" value="0.0"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   15171ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   15176ms] TypeError: props.value.toFixed is not a function
+    at ComputedRefImpl.fn (http://localhost:3002/src/components/MetricCard.vue:23:48)
+    at refreshComputed (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:661:29)
+    at get value (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:1916:5)
+    at unref (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:1771:30)
+    at Object.get (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:1777:64)
+    at Proxy._sfc_render (http://localhost:3002/src/components/MetricCard.vue:106:35)
+    at renderComponentRoot (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6722:17)
+    at ReactiveEffect.componentUpdateFn [as fn] (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8368:26)
+    at ReactiveEffect.run (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:507:19)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8226:18)
+[   15681ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   15683ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[   16683ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   16684ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[   17683ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   17684ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[   18685ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   18686ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[   19684ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   19685ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[   20176ms] [WARNING] [Vue warn]: Invalid prop: type check failed for prop "value". Expected Number with value 63.8, got String with value "63.8". 
+  at <MetricCard key="humidity" name="湿度" value="63.8"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   20177ms] [WARNING] [Vue warn]: Invalid prop: type check failed for prop "value". Expected Number with value 47.3, got String with value "47.3". 
+  at <MetricCard key="pm25" name="PM2.5" value="47.3"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   20177ms] [WARNING] [Vue warn]: Invalid prop: type check failed for prop "value". Expected Number with value 499.5, got String with value "499.5". 
+  at <MetricCard key="co2" name="CO₂" value="499.5"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   20177ms] [WARNING] [Vue warn]: Invalid prop: type check failed for prop "value". Expected Number with value 0.1, got String with value "0.1". 
+  at <MetricCard key="formaldehyde" name="甲醛" value="0.1"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   20178ms] [WARNING] [Vue warn]: Unhandled error during execution of render function 
+  at <MetricCard key="formaldehyde" name="甲醛" value="0.1"  ... > 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   20178ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   20183ms] TypeError: props.value.toFixed is not a function
+    at ComputedRefImpl.fn (http://localhost:3002/src/components/MetricCard.vue:23:48)
+    at refreshComputed (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:661:29)
+    at get value (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:1916:5)
+    at unref (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:1771:30)
+    at Object.get (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:1777:64)
+    at Proxy._sfc_render (http://localhost:3002/src/components/MetricCard.vue:106:35)
+    at renderComponentRoot (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6722:17)
+    at ReactiveEffect.componentUpdateFn [as fn] (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8368:26)
+    at ReactiveEffect.run (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:507:19)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8226:18)
+[   20681ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   20682ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[   21684ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   21685ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[   22683ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   22684ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[   22900ms] [LOG] WebSocket已断开 @ http://localhost:3002/src/stores/environment.ts:93
+[   22902ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   22902ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[   23682ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   23684ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[   24682ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   24685ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[   25682ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   25684ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[   26682ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   26683ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[   27682ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   27684ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)
+[   27904ms] [ERROR] WebSocket connection to 'ws://localhost:3001/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3002/src/stores/environment.ts:75
+[   27904ms] [ERROR] WebSocket错误: Event @ http://localhost:3002/src/stores/environment.ts:100
+[   27905ms] [LOG] WebSocket已断开 @ http://localhost:3002/src/stores/environment.ts:93
+[   28680ms] [WARNING] [Vue warn]: Unhandled error during execution of component update 
+  at <EnvironmentDashboard> 
+  at <App> @ http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:2203
+[   28682ms] TypeError: Cannot read properties of null (reading 'emitsOptions')
+    at shouldUpdateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:6898:27)
+    at updateComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8214:9)
+    at processComponent (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8160:7)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7646:11)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at processFragment (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8097:9)
+    at patch (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7620:9)
+    at patchBlockChildren (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:8019:7)
+    at patchElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7937:7)
+    at processElement (http://localhost:3002/node_modules/.vite/deps/chunk-LZ3HUG3H.js?v=644f1b00:7784:9)

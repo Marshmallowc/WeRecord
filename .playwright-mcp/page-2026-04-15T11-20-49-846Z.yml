@@ -1,0 +1,60 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]: WeRecord
+      - generic [ref=e5]:
+        - generic [ref=e6]: ...
+        - img [ref=e9]
+    - main [ref=e12]:
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - paragraph [ref=e15]: 记录新动态
+          - textbox "今天买了两个冰淇淋，一共25元 给...买了一件外套，大概399" [ref=e17]:
+            - /placeholder: "今天买了两个冰淇淋，一共25元\n给...买了一件外套，大概399"
+          - generic [ref=e18]:
+            - generic [ref=e19]:
+              - button "AA模式" [ref=e20]
+              - button "个人模式" [ref=e21]
+            - button [ref=e23]:
+              - img [ref=e24]
+            - button "识别动态" [disabled] [ref=e28]:
+              - generic [ref=e29]: 识别动态
+              - img [ref=e30]
+        - generic [ref=e32]:
+          - generic [ref=e33]:
+            - img [ref=e34]
+            - textbox "搜索记录..." [ref=e37]
+          - combobox [ref=e38]:
+            - option "全部类型" [selected]
+            - option "AA支出"
+            - option "礼物记录"
+            - option "个人开销"
+          - combobox [ref=e39]:
+            - option "全部分类" [selected]
+        - generic [ref=e41]:
+          - generic [ref=e42]:
+            - heading "最近动态" [level=2] [ref=e43]
+            - generic [ref=e44]: 已结清
+          - button "刷新" [ref=e45]:
+            - img [ref=e46]
+            - text: 刷新
+    - navigation [ref=e107]:
+      - link "记录" [ref=e108] [cursor=pointer]:
+        - /url: /
+        - img [ref=e110]
+        - generic [ref=e113]: 记录
+      - link "统计" [ref=e114] [cursor=pointer]:
+        - /url: /stats
+        - img [ref=e116]
+        - generic [ref=e117]: 统计
+      - link "动态" [ref=e118] [cursor=pointer]:
+        - /url: /moments
+        - img [ref=e120]
+        - generic [ref=e126]: 动态
+      - link "设置" [ref=e127] [cursor=pointer]:
+        - /url: /settings
+        - img [ref=e129]
+        - generic [ref=e132]: 设置
+  - button "Open Next.js Dev Tools" [ref=e138] [cursor=pointer]:
+    - img [ref=e139]
+  - alert [ref=e142]

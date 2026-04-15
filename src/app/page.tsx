@@ -1,5 +1,7 @@
 'use client'
 
+import SmartTitle from '@/components/SmartTitle'
+
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { useIdentity } from '@/context/IdentityContext'
 import { formatCurrency, formatRelativeDate, urlBase64ToUint8Array } from '@/lib/utils'
@@ -579,10 +581,10 @@ export default function HomePage() {
             <button
               onClick={() => fileInputRef.current?.click()}
               className="btn-ghost"
-              style={{ 
-                display: 'flex', alignItems: 'center', gap: '6px', 
-                padding: '10px 14px', fontSize: '13px', borderRadius: '12px', 
-                background: 'var(--bg-secondary)', color: 'var(--text-secondary)' 
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '10px 14px', fontSize: '13px', borderRadius: '12px',
+                background: 'var(--bg-secondary)', color: 'var(--text-secondary)'
               }}
               disabled={isParsing || !!preview}
             >
@@ -604,7 +606,7 @@ export default function HomePage() {
             disabled={!text.trim() || isParsing || !!preview}
             className="btn-primary"
             style={{
-              padding: '10px 24px', 
+              padding: '10px 24px',
               borderRadius: '12px',
               display: 'flex', alignItems: 'center', gap: '8px',
               opacity: !text.trim() ? 0.5 : 1,
@@ -670,17 +672,24 @@ export default function HomePage() {
                   </div>
                   <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{res.category}</span>
                 </div>
-                <div style={{ fontSize: '15px', fontWeight: '600', marginBottom: '8px' }}>
-                  {res.type === 'gift' ? res.title : (res.items?.map((i: any) => i.name).join('、') || '未命名支出')}
-                </div>
+                <SmartTitle
+                  type={res.type}
+                  title={res.title}
+                  items={res.items}
+                  note={res.note}
+                />
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', fontSize: '13px' }}>
                   <span>
                     {res.type === 'gift'
                       ? (res.from === identity ? '我送出的' : `${partnerName}送出的`)
-                      : (res.payer === identity ? '我付款' : `${partnerName}付款`)}
+                      : (res.payer === identity ? '我已支付' : `${partnerName}已支付`)}
                   </span>
                   <span style={{ color: 'var(--accent)', fontWeight: '700' }}>
-                    {formatCurrency(Number(res.type === 'gift' ? res.amount : res.my_share) || 0)}
+                    {formatCurrency(Number(
+                      res.type === 'gift'
+                        ? res.amount
+                        : (res.payer === identity ? ((res.total || 0) - (res.my_share || 0)) : res.my_share)
+                    ) || 0)}
                   </span>
                 </div>
               </div>
@@ -883,9 +892,12 @@ function RecordCard({ record, expanded, onToggle, onSettle, onNudge, onEdit, par
                 {record.date}
               </span>
             </div>
-            <h3 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '4px' }}>
-              {isGift ? record.title : record.aa_items?.map((i: any) => i.name).join('、')}
-            </h3>
+            <SmartTitle
+              type={isGift ? 'gift' : 'aa'}
+              title={isGift ? record.title : ''}
+              items={record.aa_items}
+              note={record.note}
+            />
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
               <div style={{ width: '24px', height: '24px', borderRadius: '8px', overflow: 'hidden', background: 'var(--bg-secondary)', border: '1px solid var(--border)', flexShrink: 0 }}>
                 {isMePayerTarget ? (
@@ -897,7 +909,7 @@ function RecordCard({ record, expanded, onToggle, onSettle, onNudge, onEdit, par
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--text-secondary)' }}>
                 {isGift
                   ? (record.from_user === identity ? `我送给${partnerName}` : `${partnerName}送我的`)
-                  : (record.payer === identity ? '我付的' : `${partnerName}付的`)
+                  : (record.payer === identity ? '我已付的' : `${partnerName}已付的`)
                 }
               </div>
             </div>

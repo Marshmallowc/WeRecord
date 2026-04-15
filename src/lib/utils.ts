@@ -48,3 +48,36 @@ export function urlBase64ToUint8Array(base64String: string) {
   }
   return outputArray
 }
+
+export function formatMomentTime(isoString: string) {
+  const date = new Date(isoString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+
+  const dateAtMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const nowAtMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const dayDiff = Math.floor((nowAtMidnight - dateAtMidnight) / (1000 * 60 * 60 * 24));
+
+  if (diffMins < 1) return '刚刚';
+  if (diffMins < 60) return `${diffMins}分钟前`;
+  if (dayDiff === 0) return `${diffHours}小时前`;
+
+  const hhmm = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+  if (dayDiff === 1) return `昨天 ${hhmm}`;
+  if (dayDiff === 2) return `前天 ${hhmm}`;
+
+  if (dayDiff < 7) return `${dayDiff}天前`;
+
+  const isSameYear = date.getFullYear() === now.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+
+  if (isSameYear) {
+    return `${month}月${day}日 ${hhmm}`;
+  }
+
+  return `${date.getFullYear()}年${month}月${day}日 ${hhmm}`;
+}

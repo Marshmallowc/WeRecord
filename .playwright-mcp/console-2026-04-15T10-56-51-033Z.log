@@ -1,0 +1,88 @@
+[    1366ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[    1426ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[    1553ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[    1597ms] [LOG] [Fast Refresh] done in 145ms @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  102050ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  102113ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  160627ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3000/login:0
+[  184159ms] [ERROR] Failed to load resource: the server responded with a status of 400 () @ https://zzulcfeqtdxuionsfhcy.supabase.co/auth/v1/token?grant_type=password:0
+[  233372ms] [ERROR] Failed to load resource: the server responded with a status of 400 () @ https://zzulcfeqtdxuionsfhcy.supabase.co/auth/v1/token?grant_type=password:0
+[  247003ms] [LOG] Push notification support detected. Registering SW... @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  247004ms] [LOG] Push notification support detected. Registering SW... @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  250250ms] [LOG] Service Worker Registered successfully @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  250250ms] [LOG] Service Worker Registered successfully @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  250254ms] [LOG] No existing subscription found. Requesting new one... @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  250254ms] [LOG] No existing subscription found. Requesting new one... @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  251435ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3000/settings:0
+[  254323ms] [LOG] Successfully subscribed to Push Notifications! @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  254323ms] [LOG] Syncing subscription to Supabase for identity: me @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  254506ms] [LOG] Successfully subscribed to Push Notifications! @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  254506ms] [LOG] Syncing subscription to Supabase for identity: me @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  258077ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:3000/api/push/subscription:0
+[  258077ms] [WARNING] [Push Sync] Network issue, retrying in 5s... (Attempt 1/3) @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  276570ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:3000/api/push/subscription:0
+[  276575ms] [WARNING] [Push Sync] Network issue, retrying in 10s... (Attempt 2/3) @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  290022ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:3000/api/push/subscription:0
+[  290025ms] [WARNING] [Push Sync] Network issue, retrying in 20s... (Attempt 3/3) @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  299132ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  299223ms] [LOG] [Fast Refresh] done in 191ms @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  308583ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  308619ms] [LOG] [Fast Refresh] done in 137ms @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  311715ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:3000/api/push/subscription:0
+[  311715ms] [WARNING] [Push Sync] Failed after 3 retries, deferring to next page load. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  315218ms] [LOG] Push notification support detected. Registering SW... @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  315219ms] [LOG] Push notification support detected. Registering SW... @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  315250ms] [LOG] Service Worker Registered successfully @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  315250ms] [LOG] Service Worker Registered successfully @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  315251ms] [LOG] Syncing subscription to Supabase for identity: me @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  315252ms] [LOG] Syncing subscription to Supabase for identity: me @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  317263ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:3000/api/push/subscription:0
+[  317264ms] [WARNING] [Push Sync] Network issue, retrying in 5s... (Attempt 1/3) @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  318417ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:3000/api/push/subscription:0
+[  318417ms] [WARNING] [Push Sync] Network issue, retrying in 5s... (Attempt 1/3) @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  325339ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:3000/api/push/subscription:0
+[  325339ms] [WARNING] [Push Sync] Network issue, retrying in 10s... (Attempt 2/3) @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  325662ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:3000/api/push/subscription:0
+[  325663ms] [WARNING] [Push Sync] Network issue, retrying in 10s... (Attempt 2/3) @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  337580ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:3000/api/push/subscription:0
+[  337581ms] [WARNING] [Push Sync] Network issue, retrying in 20s... (Attempt 3/3) @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  338793ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:3000/api/push/subscription:0
+[  338795ms] [WARNING] [Push Sync] Network issue, retrying in 20s... (Attempt 3/3) @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  363631ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:3000/api/push/subscription:0
+[  363633ms] [WARNING] [Push Sync] Failed after 3 retries, deferring to next page load. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  365836ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:3000/api/push/subscription:0
+[  365836ms] [WARNING] [Push Sync] Failed after 3 retries, deferring to next page load. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  371200ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  371297ms] [LOG] [Fast Refresh] done in 199ms @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  373119ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  373309ms] [LOG] [Fast Refresh] done in 292ms @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  525430ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:3000/api/push/subscription:0
+[  525432ms] [WARNING] [Push Sync] Network issue, retrying in 5s... (Attempt 1/3) @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  536157ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:3000/api/push/subscription:0
+[  536159ms] [WARNING] [Push Sync] Network issue, retrying in 10s... (Attempt 2/3) @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  549622ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:3000/api/push/subscription:0
+[  549623ms] [WARNING] [Push Sync] Network issue, retrying in 20s... (Attempt 3/3) @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  573388ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:3000/api/push/subscription:0
+[  573389ms] [WARNING] [Push Sync] Failed after 3 retries, deferring to next page load. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  931617ms] [LOG] Push notification support detected. Registering SW... @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  931620ms] [LOG] Push notification support detected. Registering SW... @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  931673ms] [LOG] Service Worker Registered successfully @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  931674ms] [LOG] Service Worker Registered successfully @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  931676ms] [LOG] Syncing subscription to Supabase for identity: me @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  931677ms] [LOG] Syncing subscription to Supabase for identity: me @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  937048ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:3000/api/push/subscription:0
+[  937049ms] [WARNING] [Push Sync] Network issue, retrying in 5s... (Attempt 1/3) @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  950065ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:3000/api/push/subscription:0
+[  950066ms] [WARNING] [Push Sync] Network issue, retrying in 5s... (Attempt 1/3) @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  955694ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:3000/api/push/subscription:0
+[  955695ms] [WARNING] [Push Sync] Network issue, retrying in 10s... (Attempt 2/3) @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  971709ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:3000/api/push/subscription:0
+[  971711ms] [WARNING] [Push Sync] Network issue, retrying in 10s... (Attempt 2/3) @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  976126ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:3000/api/push/subscription:0
+[  976128ms] [WARNING] [Push Sync] Network issue, retrying in 20s... (Attempt 3/3) @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  999459ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:3000/api/push/subscription:0
+[  999465ms] [WARNING] [Push Sync] Network issue, retrying in 20s... (Attempt 3/3) @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1005055ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:3000/api/push/subscription:0
+[ 1005060ms] [WARNING] [Push Sync] Failed after 3 retries, deferring to next page load. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1031774ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:3000/api/push/subscription:0
+[ 1031775ms] [WARNING] [Push Sync] Failed after 3 retries, deferring to next page load. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
