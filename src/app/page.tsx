@@ -106,18 +106,41 @@ export default function HomePage() {
     return true
   })
 
-  // Batch Settlement Logic
-  const pendingToPayRecords = useMemo(() => {
-    return displayRecords.filter(r => {
-      if (r.record_type !== 'aa' || r.status === 'settled' || r.is_uploading) return false
+  // Net Balance Settlement Logic
+  const { iOweRecords, theyOweRecords, totalIOwe, totalTheyOwe, netOwedByMe } = useMemo(() => {
+    const iOwe: (RecordItem & { displayAmount: number })[] = []
+    const theyOwe: (RecordItem & { displayAmount: number })[] = []
+    let tIOwe = 0
+    let tTheyOwe = 0
+
+    displayRecords.forEach(r => {
+      if (r.record_type !== 'aa' || r.status === 'settled' || r.is_uploading) return
+
       const isMePayer = r.payer === identity
       const effectiveMyShare = identity === 'me' ? (r.my_share || 0) : ((r.total_amount || 0) - (r.my_share || 0))
-      return !isMePayer && effectiveMyShare > 0
-    }).map(r => {
-      const effectiveMyShare = identity === 'me' ? (r.my_share || 0) : ((r.total_amount || 0) - (r.my_share || 0))
-      return { ...r, displayAmount: effectiveMyShare }
+      const effectiveHerShare = (r.total_amount || 0) - effectiveMyShare
+
+      if (!isMePayer && effectiveMyShare > 0) {
+        // They paid, I owe my share
+        iOwe.push({ ...r, displayAmount: effectiveMyShare })
+        tIOwe += effectiveMyShare
+      } else if (isMePayer && effectiveHerShare > 0) {
+        // I paid, they owe their share
+        theyOwe.push({ ...r, displayAmount: effectiveHerShare })
+        tTheyOwe += effectiveHerShare
+      }
     })
+
+    return {
+      iOweRecords: iOwe,
+      theyOweRecords: theyOwe,
+      totalIOwe: tIOwe,
+      totalTheyOwe: tTheyOwe,
+      netOwedByMe: tIOwe - tTheyOwe
+    }
   }, [displayRecords, identity])
+
+  const hasUnsettledBills = iOweRecords.length > 0 || theyOweRecords.length > 0
 
   // Combine errors
   const isNetworkError = !!recordsError || !!catError;
@@ -401,18 +424,18 @@ export default function HomePage() {
       })
 
       // 3. Send Summary Notification to Partner
-      const totalAmount = pendingToPayRecords.reduce((sum, r) => sum + r.displayAmount, 0)
       const count = ids.length
       const isMe = identity === 'me'
       const targetIdentity = isMe ? 'her' : 'me'
+      const netPay = Math.max(0, netOwedByMe)
 
       fetch('/api/push/trigger', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           targetIdentity,
-          title: '💰 账单全部结清',
-          body: `哇~ Ta 一次性结清了 ${count} 笔账单 (共 ${totalAmount} 元)，快去看看吧！`,
+          title: '💰 账单已成功平账',
+          body: `Ta 一次性平账了 ${count} 笔账单 (抵扣后净支付 ${netPay} 元)，快去看看吧！`,
           url: '/'
         })
       }).catch(err => console.error('Failed to notify partner', err))
@@ -743,7 +766,14 @@ export default function HomePage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <h2 style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-secondary)' }}>最近动态</h2>
-            {pendingToPayRecords.length > 0 ? (
+            {!hasUnsettledBills ? (
+              <span style={{
+                fontSize: '11px', color: 'var(--green)', padding: '2px 8px',
+                borderRadius: '100px', background: 'var(--green-bg)', fontWeight: '600'
+              }}>
+                已结清
+              </span>
+            ) : netOwedByMe > 0 ? (
               <button
                 onClick={() => setIsBatchPaymentOpen(true)}
                 className="btn-primary"
@@ -752,15 +782,30 @@ export default function HomePage() {
                   background: 'var(--accent)', boxShadow: '0 4px 12px var(--accent-bg)'
                 }}
               >
-                一键结清 ({pendingToPayRecords.length}笔)
+                一键结清 (-{formatCurrency(netOwedByMe)})
+              </button>
+            ) : netOwedByMe < 0 ? (
+              <button
+                onClick={() => setIsBatchPaymentOpen(true)}
+                className="btn-primary"
+                style={{
+                  fontSize: '11px', padding: '4px 10px', height: 'auto', borderRadius: '100px',
+                  background: 'var(--orange, #f59e0b)', boxShadow: '0 4px 12px var(--orange-bg, #fef3c7)'
+                }}
+              >
+                待核对结清 (+{formatCurrency(Math.abs(netOwedByMe))})
               </button>
             ) : (
-              <span style={{
-                fontSize: '11px', color: 'var(--green)', padding: '2px 8px',
-                borderRadius: '100px', background: 'var(--green-bg)', fontWeight: '600'
-              }}>
-                已结清
-              </span>
+              <button
+                onClick={() => setIsBatchPaymentOpen(true)}
+                className="btn-primary"
+                style={{
+                  fontSize: '11px', padding: '4px 10px', height: 'auto', borderRadius: '100px',
+                  background: 'var(--green)', boxShadow: '0 4px 12px var(--green-bg)'
+                }}
+              >
+                抵消平账
+              </button>
             )}
           </div>
           <button onClick={() => mutate(url => typeof url === 'string' && url.includes('/api/records'))} className="btn-ghost" style={{
@@ -836,7 +881,9 @@ export default function HomePage() {
         <BatchPaymentModal
           isOpen={isBatchPaymentOpen}
           onClose={() => setIsBatchPaymentOpen(false)}
-          records={pendingToPayRecords}
+          iOweRecords={iOweRecords}
+          theyOweRecords={theyOweRecords}
+          netAmount={netOwedByMe}
           partnerName={partnerName}
           alipayCode={partnerAlipayCode}
           onConfirm={handleBatchSettle}
