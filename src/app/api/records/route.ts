@@ -108,14 +108,18 @@ export async function PATCH(req: NextRequest) {
   } else {
     // Support batch update for AA bills (mainly for 'settled' status)
     const targetIds = ids || [id]
-    const { error } = await supabase.from('aa_bills').update({
-      status: updates.status,
-      note: updates.note,
-      date: updates.date,
-      payer: updates.payer,
-      total_amount: updates.total_amount,
-      my_share: updates.my_share,
-    }).in('id', targetIds).eq('couple_id', profile.couple_id)
+    
+    // 关键修复：只更新请求中提供的字段，避免 undefined 覆盖数据库已有数据
+    const updateData: any = {}
+    const fields = ['status', 'note', 'date', 'payer', 'total_amount', 'my_share']
+    fields.forEach(f => {
+      if (updates[f] !== undefined) updateData[f] = updates[f]
+    })
+
+    const { error } = await supabase.from('aa_bills')
+      .update(updateData)
+      .in('id', targetIds)
+      .eq('couple_id', profile.couple_id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   }
 

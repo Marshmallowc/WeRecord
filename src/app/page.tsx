@@ -108,6 +108,17 @@ export default function HomePage() {
 
   // Net Balance Settlement Logic
   const { iOweRecords, theyOweRecords, totalIOwe, totalTheyOwe, netOwedByMe } = useMemo(() => {
+    // If identity is not yet loaded, return empty defaults to avoid incorrect calculation
+    if (!identity) {
+      return {
+        iOweRecords: [],
+        theyOweRecords: [],
+        totalIOwe: 0,
+        totalTheyOwe: 0,
+        netOwedByMe: 0
+      }
+    }
+
     const iOwe: (RecordItem & { displayAmount: number })[] = []
     const theyOwe: (RecordItem & { displayAmount: number })[] = []
     let tIOwe = 0
@@ -273,7 +284,14 @@ export default function HomePage() {
     // Give the local images temporary blob URLs so they can render instantly
     const localBlobUrls = snapshotImages.map(f => URL.createObjectURL(f))
 
-    // 2. Build mock datasets for immediate UI feedback
+    // 2. Build mock datasets for immediate UI feedback (Resolve relative identities)
+    const resolveIdentities = (val: string) => {
+      if (currentIdentity !== 'her') return val
+      if (val === 'me') return 'her'
+      if (val === 'her') return 'me'
+      return val
+    }
+
     const tempPrefix = `temp-${Date.now()}`
     const mockRecords: RecordItem[] = preview.results.map((r, i) => ({
       id: `${tempPrefix}-${i}`,
@@ -282,14 +300,14 @@ export default function HomePage() {
       date: r.date || new Date().toISOString().split('T')[0],
       source_text: preview.source_text,
       category: r.category || '未分类',
-      from_user: r.from,
-      to_user: r.to,
+      from_user: resolveIdentities(r.from || 'me'),
+      to_user: resolveIdentities(r.to || 'her'),
       title: r.title,
       amount: r.amount,
-      payer: r.payer,
+      payer: resolveIdentities(r.payer || 'me'),
       status: 'pending',
       total_amount: r.total,
-      my_share: r.my_share,
+      my_share: currentIdentity === 'her' ? ((r.total || 0) - (r.my_share || 0)) : r.my_share,
       aa_items: r.items,
       image_urls: localBlobUrls, // Use local blob URLs immediately for the mock card
       is_uploading: true, // Marker for temporary UI status
@@ -704,14 +722,14 @@ export default function HomePage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', fontSize: '13px' }}>
                   <span>
                     {res.type === 'gift'
-                      ? (res.from === identity ? '我送出的' : `${partnerName}送出的`)
-                      : (res.payer === identity ? '我已支付' : `${partnerName}已支付`)}
+                      ? (res.from === 'me' ? '我送出的' : `${partnerName}送出的`)
+                      : (res.payer === 'me' ? '我已支付' : `${partnerName}已支付`)}
                   </span>
                   <span style={{ color: 'var(--accent)', fontWeight: '700' }}>
                     {formatCurrency(Number(
                       res.type === 'gift'
                         ? res.amount
-                        : (res.payer === identity ? ((res.total || 0) - (res.my_share || 0)) : res.my_share)
+                        : (res.payer === 'me' ? ((res.total || 0) - (res.my_share || 0)) : res.my_share)
                     ) || 0)}
                   </span>
                 </div>
@@ -906,7 +924,7 @@ function RecordCard({ record, expanded, onToggle, onSettle, onNudge, onEdit, par
   // If I am NOT the payer, I care about how much I owe (MyShare)
   const displayAmount = isGift
     ? record.amount
-    : (isMePayerTarget ? ((record.total_amount || 0) - effectiveMyShare) : effectiveMyShare)
+    : (!identity ? 0 : (isMePayerTarget ? ((record.total_amount || 0) - effectiveMyShare) : effectiveMyShare))
 
   let displayCategory = record.category
   if (!displayCategory && record.aa_items && record.aa_items.length > 0) {

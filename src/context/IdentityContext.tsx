@@ -47,11 +47,14 @@ export function IdentityProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfiles = async (currentUserId?: string) => {
     const targetId = currentUserId || user?.id
+    console.log(`[IdentityContext] fetchProfiles starting for ID: ${targetId}`)
     if (!targetId) {
+      console.log('[IdentityContext] fetchProfiles skipped: No targetId.')
       setIsLoading(false)
       return
     }
 
+    setIsLoading(true)
     try {
       // 1. 尝试获取我的资料
       let { data: myData } = await supabase
@@ -92,9 +95,10 @@ export function IdentityProvider({ children }: { children: React.ReactNode }) {
         }
       }
     } catch (e) {
-      console.error('Failed to refresh profiles', e)
+      console.error('[IdentityContext] Failed to refresh profiles:', e)
     } finally {
       setIsLoading(false)
+      console.log('[IdentityContext] Profile loading complete.')
     }
   }
 
@@ -114,7 +118,20 @@ export function IdentityProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const setIdentity = async (id: UserType) => {
-    console.warn('Manual identity switch is deprecated in 2.0.')
+    if (!user) return
+    console.log(`[IdentityContext] Switching identity to: ${id}`)
+    const { error } = await supabase
+      .from('profiles')
+      .update({ identity: id })
+      .eq('id', user.id)
+    
+    if (error) {
+      console.error('[IdentityContext] Error updating identity:', error)
+    } else {
+      setIdentityState(id)
+      // Refresh profiles to reflect the change immediately
+      await fetchProfiles(user.id)
+    }
   }
 
   const signOut = async () => {
