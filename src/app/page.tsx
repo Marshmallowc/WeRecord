@@ -14,6 +14,8 @@ import { EditModal } from '@/components/EditModal'
 import { PaymentModal } from '@/components/PaymentModal'
 import { BatchPaymentModal } from '@/components/BatchPaymentModal'
 import useSWR, { mutate } from 'swr'
+import useSWRInfinite from 'swr/infinite'
+import { Virtuoso } from 'react-virtuoso'
 import imageCompression from 'browser-image-compression'
 import { createClient } from '@/lib/supabase/client'
 const supabase = createClient()
@@ -79,14 +81,19 @@ export default function HomePage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // SWR for Records - Optimized for depth and persistence
-  const { data: recordsData, error: recordsError, isLoading: isLoadingRecords, isValidating } = useSWR(
-    `/api/records?limit=40&search=${search}&type=${filterType}&category=${filterCategory}`,
+  const getKey = (pageIndex: number, previousPageData: any) => {
+    if (previousPageData && !previousPageData.hasMore) return null // reached the end
+    return `/api/records?page=${pageIndex + 1}&limit=20&search=${search}&type=${filterType}&category=${filterCategory}`
+  }
+
+  const { data: recordsData, error: recordsError, size, setSize, isLoading: isLoadingRecords, isValidating } = useSWRInfinite(
+    getKey,
     fetcher,
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
-      revalidateIfStale: false, // Use stale data until a hard refresh happens
-      dedupingInterval: 15000,   // Prevent redundant fetches within 15 seconds
+      revalidateIfStale: false,
+      dedupingInterval: 15000,
     }
   )
 
@@ -97,7 +104,7 @@ export default function HomePage() {
     dedupingInterval: 60000 // 1 minute cache for category list
   })
   const categories = catData?.data ?? []
-  const records = recordsData?.data ?? []
+  const records = recordsData ? recordsData.flatMap(page => page.data || []) : []
 
   // Dual-Track Rendering Synthesis!
   // Prepend our global mock uploading records to the truth from the server.
@@ -105,6 +112,14 @@ export default function HomePage() {
     if (filterType && r.record_type !== filterType) return false
     return true
   })
+
+  // SWR for Pending AA Bills - For accurate settlement across ALL history
+  const { data: pendingData } = useSWR('/api/records/pending', fetcher, {
+    revalidateOnFocus: false,
+    revalidateIfStale: false,
+    dedupingInterval: 15000
+  })
+  const pendingRecords = pendingData?.data ?? []
 
   // Net Balance Settlement Logic
   const { iOweRecords, theyOweRecords, totalIOwe, totalTheyOwe, netOwedByMe } = useMemo(() => {
@@ -124,7 +139,11 @@ export default function HomePage() {
     let tIOwe = 0
     let tTheyOwe = 0
 
-    displayRecords.forEach(r => {
+    // Combine local pending uploads and all pending records from the server
+    const localPending = pendingUploads.filter(r => r.record_type === 'aa')
+    const allPending = [...pendingRecords, ...localPending]
+
+    allPending.forEach(r => {
       if (r.record_type !== 'aa' || r.status === 'settled' || r.is_uploading) return
 
       const isMePayer = r.payer === identity
@@ -149,7 +168,7 @@ export default function HomePage() {
       totalTheyOwe: tTheyOwe,
       netOwedByMe: tIOwe - tTheyOwe
     }
-  }, [displayRecords, identity])
+  }, [pendingRecords, pendingUploads, identity])
 
   const hasUnsettledBills = iOweRecords.length > 0 || theyOweRecords.length > 0
 
@@ -846,23 +865,49 @@ export default function HomePage() {
             <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>没有找到相关记录</p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {displayRecords.map((r: RecordItem) => (
-              <RecordCard
-                key={r.id}
-                record={r}
-                expanded={expandedId === r.id}
-                onToggle={() => setExpandedId(expandedId === r.id ? null : r.id)}
-                onSettle={() => setPaymentRecord(r)}
-                onNudge={handleNudge}
-                onEdit={() => setEditingRecord(r)}
-                partnerName={partnerName}
-                identity={identity}
-                avatarUrl={avatarUrl}
-                partnerAvatarUrl={partnerAvatarUrl}
-              />
-            ))}
-          </div>
+          <Virtuoso
+            useWindowScroll
+            data={displayRecords}
+            endReached={() => {
+              if (!isValidating && recordsData && recordsData[recordsData.length - 1]?.hasMore) {
+                setSize(size + 1)
+              }
+            }}
+            itemContent={(index, r) => (
+              <div style={{ paddingBottom: '12px' }}>
+                <RecordCard
+                  record={r}
+                  expanded={expandedId === r.id}
+                  onToggle={() => setExpandedId(expandedId === r.id ? null : r.id)}
+                  onSettle={() => setPaymentRecord(r)}
+                  onNudge={handleNudge}
+                  onEdit={() => setEditingRecord(r)}
+                  partnerName={partnerName}
+                  identity={identity}
+                  avatarUrl={avatarUrl}
+                  partnerAvatarUrl={partnerAvatarUrl}
+                />
+              </div>
+            )}
+            components={{
+              Footer: () => {
+                const hasMore = recordsData?.[recordsData.length - 1]?.hasMore
+                if (!hasMore && !isValidating) {
+                  return (
+                    <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                      没有更多了
+                    </div>
+                  )
+                }
+                return (
+                  <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                    <RefreshCw size={14} className="spin" style={{ display: 'inline-block', marginRight: '6px', verticalAlign: 'middle' }} />
+                    <span style={{ verticalAlign: 'middle' }}>加载更多中...</span>
+                  </div>
+                )
+              }
+            }}
+          />
         )}
       </div>
 

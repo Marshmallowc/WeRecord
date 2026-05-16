@@ -15,7 +15,9 @@ export async function GET(req: NextRequest) {
   if (!coupleId) return NextResponse.json({ data: [] })
 
   const { searchParams } = new URL(req.url)
+  const page = parseInt(searchParams.get('page') ?? '1')
   const limit = parseInt(searchParams.get('limit') ?? '20')
+  const fetchLimit = page * limit
   const search = searchParams.get('search')?.trim()
   const category = searchParams.get('category')
   const payer = searchParams.get('payer')
@@ -43,14 +45,14 @@ export async function GET(req: NextRequest) {
   }
 
   const queries: any[] = [
-    giftQuery.order('created_at', { ascending: false }).limit(limit),
-    billQuery.order('created_at', { ascending: false }).limit(limit),
+    giftQuery.order('date', { ascending: false }).order('created_at', { ascending: false }).limit(fetchLimit),
+    billQuery.order('date', { ascending: false }).order('created_at', { ascending: false }).limit(fetchLimit),
   ]
 
   // Only include insights if explicitly requested or if type is 'insight'
   const shouldIncludeInsights = includeInsights || type === 'insight'
   if (shouldIncludeInsights) {
-    queries.push(insightQuery.order('created_at', { ascending: false }).limit(limit))
+    queries.push(insightQuery.order('date', { ascending: false }).order('created_at', { ascending: false }).limit(fetchLimit))
   }
 
   const results = await Promise.all(queries)
@@ -77,9 +79,13 @@ export async function GET(req: NextRequest) {
     const d2 = new Date(b.date).getTime()
     if (d1 !== d2) return d2 - d1
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  }).slice(0, limit)
+  })
 
-  return NextResponse.json({ data: combined })
+  const offset = (page - 1) * limit
+  const paginatedData = combined.slice(offset, offset + limit)
+  const hasMore = combined.length > offset + limit
+
+  return NextResponse.json({ data: paginatedData, hasMore })
 }
 
 export async function PATCH(req: NextRequest) {
