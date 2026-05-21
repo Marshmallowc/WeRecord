@@ -13,7 +13,7 @@ import { FeedSkeleton } from '@/components/RecordSkeleton'
 import { EditModal } from '@/components/EditModal'
 import { PaymentModal } from '@/components/PaymentModal'
 import { BatchPaymentModal } from '@/components/BatchPaymentModal'
-import useSWR, { mutate } from 'swr'
+import useSWR from 'swr'
 import useSWRInfinite from 'swr/infinite'
 import { Virtuoso } from 'react-virtuoso'
 import imageCompression from 'browser-image-compression'
@@ -86,7 +86,7 @@ export default function HomePage() {
     return `/api/records?page=${pageIndex + 1}&limit=20&search=${search}&type=${filterType}&category=${filterCategory}`
   }
 
-  const { data: recordsData, error: recordsError, size, setSize, isLoading: isLoadingRecords, isValidating } = useSWRInfinite(
+  const { data: recordsData, error: recordsError, size, setSize, isLoading: isLoadingRecords, isValidating, mutate: mutateRecords } = useSWRInfinite(
     getKey,
     fetcher,
     {
@@ -114,7 +114,7 @@ export default function HomePage() {
   })
 
   // SWR for Pending AA Bills - For accurate settlement across ALL history
-  const { data: pendingData } = useSWR('/api/records/pending', fetcher, {
+  const { data: pendingData, mutate: mutatePending } = useSWR('/api/records/pending', fetcher, {
     revalidateOnFocus: false,
     revalidateIfStale: false,
     dedupingInterval: 15000
@@ -380,25 +380,23 @@ export default function HomePage() {
         } catch {
           showToast('入库失败，请刷新后再试', false)
         } finally {
-          // 6. Regardless of success/fail, clean up the global mock list
+          // Regardless of success/fail, clean up the global mock list
           mockRecords.forEach(m => removePendingUpload(m.id))
           // And hit the network to sync the true state
-          const keyFilter = (url: any) => typeof url === 'string' && url.includes('/api/records')
-          mutate(keyFilter)
+          mutateRecords()
+          mutatePending()
         }
       })()
   }
 
   async function handleSettle(id: string, record?: RecordItem) {
-    const keyFilter = (url: any) => typeof url === 'string' && url.includes('/api/records')
-
     // 1. Optimistic UI update
-    mutate(keyFilter, (current: any) => {
-      if (!current?.data) return current
-      return {
-        ...current,
-        data: current.data.map((r: any) => r.id === id ? { ...r, status: 'settled' } : r)
-      }
+    mutateRecords((current: any) => {
+      if (!current) return current
+      return current.map((page: any) => ({
+        ...page,
+        data: page.data?.map((r: any) => r.id === id ? { ...r, status: 'settled' } : r)
+      }))
     }, false)
 
     showToast('已完成结清')
@@ -431,23 +429,23 @@ export default function HomePage() {
       }
 
       // 4. Final sync
-      mutate(keyFilter)
+      mutateRecords()
+      mutatePending()
     } catch (err) {
       showToast('更新失败', false)
-      mutate(keyFilter)
+      mutateRecords()
+      mutatePending()
     }
   }
 
   async function handleBatchSettle(ids: string[]) {
-    const keyFilter = (url: any) => typeof url === 'string' && url.includes('/api/records')
-
     // 1. Optimistic UI update
-    mutate(keyFilter, (current: any) => {
-      if (!current?.data) return current
-      return {
-        ...current,
-        data: current.data.map((r: any) => ids.includes(r.id) ? { ...r, status: 'settled' } : r)
-      }
+    mutateRecords((current: any) => {
+      if (!current) return current
+      return current.map((page: any) => ({
+        ...page,
+        data: page.data?.map((r: any) => ids.includes(r.id) ? { ...r, status: 'settled' } : r)
+      }))
     }, false)
 
     showToast('正在处理批量结清...')
@@ -479,10 +477,12 @@ export default function HomePage() {
 
       showToast('全部结清成功')
       // 4. Final sync
-      mutate(keyFilter)
+      mutateRecords()
+      mutatePending()
     } catch (err) {
       showToast('批量更新失败', false)
-      mutate(keyFilter)
+      mutateRecords()
+      mutatePending()
     }
   }
 
@@ -522,15 +522,13 @@ export default function HomePage() {
   }
 
   async function handleDelete(id: string, type: string) {
-    const keyFilter = (url: any) => typeof url === 'string' && url.includes('/api/records')
-
     // 1. Optimistic UI update
-    mutate(keyFilter, (current: any) => {
-      if (!current?.data) return current
-      return {
-        ...current,
-        data: current.data.filter((r: any) => r.id !== id)
-      }
+    mutateRecords((current: any) => {
+      if (!current) return current
+      return current.map((page: any) => ({
+        ...page,
+        data: page.data?.filter((r: any) => r.id !== id)
+      }))
     }, false)
 
     showToast('已删除')
@@ -539,10 +537,12 @@ export default function HomePage() {
       // 2. Network request
       await fetch(`/api/records?id=${id}&type=${type}`, { method: 'DELETE' })
       // 3. Final sync
-      mutate(keyFilter)
+      mutateRecords()
+      mutatePending()
     } catch (err) {
       showToast('删除失败', false)
-      mutate(keyFilter)
+      mutateRecords()
+      mutatePending()
     }
   }
 
@@ -845,7 +845,7 @@ export default function HomePage() {
               </button>
             )}
           </div>
-          <button onClick={() => mutate(url => typeof url === 'string' && url.includes('/api/records'))} className="btn-ghost" style={{
+          <button onClick={() => { mutateRecords(); mutatePending(); }} className="btn-ghost" style={{
             display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '4px 8px'
           }}>
             <RefreshCw size={12} className={isValidating ? 'spin' : ''} /> 刷新
@@ -917,8 +917,9 @@ export default function HomePage() {
           onClose={() => setEditingRecord(null)}
           identity={identity!}
           partnerName={partnerName}
-          onSave={(u) => {
-            mutate(url => typeof url === 'string' && url.includes('/api/records'))
+          onSave={() => {
+            mutateRecords()
+            mutatePending()
             showToast('已更新')
           }}
           onDelete={async (id, type) => {
