@@ -1,0 +1,74 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { AIAgent } from '@/lib/agents/agent'
+
+export const dynamic = 'force-dynamic'
+
+export async function POST(req: NextRequest) {
+  try {
+    // 1. Authenticate user
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // 2. Fetch current user's profile details
+    const { data: myProfile, error: myProfileErr } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single()
+
+    if (myProfileErr || !myProfile) {
+      return NextResponse.json({ error: 'Failed to retrieve user profile' }, { status: 500 })
+    }
+
+    const coupleId = myProfile.couple_id
+    if (!coupleId) {
+      return NextResponse.json({ error: '请先在设置中绑定您的情侣伙伴，以激活AI财务管家功能。' }, { status: 403 })
+    }
+
+    // 3. Fetch partner's profile to resolve names
+    const { data: partnerProfile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('couple_id', coupleId)
+      .neq('id', user.id)
+      .maybeSingle()
+
+    const partnerName = partnerProfile?.display_name || (myProfile.identity === 'me' ? '对方' : 'Ta')
+
+    // 4. Retrieve message thread
+    const { messages, image_urls } = await req.json()
+    if (!messages || !Array.isArray(messages)) {
+      return NextResponse.json({ error: 'Missing conversation history' }, { status: 400 })
+    }
+
+    // Filter messages to match DeepSeek expected structure
+    const cleanedMessages = messages.map((m: any) => ({
+      role: m.role || (m.sender === 'user' ? 'user' : 'assistant'),
+      content: m.text || m.content || ''
+    }))
+
+    // 5. Build Agent execution context
+    const context = {
+      supabase,
+      userId: user.id,
+      coupleId: coupleId,
+      identity: myProfile.identity as 'me' | 'her',
+      displayName: myProfile.display_name || '用户',
+      partnerName: partnerName,
+      image_urls: image_urls || []
+    }
+
+    // 6. Run AIAgent Loop
+    const agent = new AIAgent(context)
+    const result = await agent.run(cleanedMessages)
+
+    return NextResponse.json(result)
+  } catch (err: any) {
+    console.error('[API Chat Route] Execution failed:', err)
+    return NextResponse.json({ error: err.message || 'AI Assistant service internal failure' }, { status: 500 })
+  }
+}

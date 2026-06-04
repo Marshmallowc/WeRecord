@@ -4,12 +4,50 @@ import { useIdentity } from '@/context/IdentityContext'
 import IdentitySelector from './IdentitySelector'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, BarChart2, Settings, User, Aperture } from 'lucide-react'
+import { ScrollText, BarChart2, Settings, User, Aperture, Sparkles } from 'lucide-react'
+import { useMemo } from 'react'
+import useSWR from 'swr'
+import { formatCurrency } from '@/lib/utils'
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, displayName, avatarUrl } = useIdentity()
+  const { user, identity, displayName, avatarUrl } = useIdentity()
   const pathname = usePathname()
   const isLoginPage = pathname === '/login'
+
+  // Fetch pending records for settlement capsule
+  const { data: pendingData } = useSWR(user ? '/api/records/pending' : null, url => fetch(url).then(res => res.json()))
+
+  const { hasUnsettledBills, netOwedByMe } = useMemo(() => {
+    const pendingRecords = pendingData?.data ?? []
+    if (!identity || pendingRecords.length === 0) {
+      return { hasUnsettledBills: false, netOwedByMe: 0 }
+    }
+
+    let tIOwe = 0
+    let tTheyOwe = 0
+
+    pendingRecords.forEach((r: any) => {
+      if (r.record_type !== 'aa' || r.status === 'settled') return
+
+      const isMePayer = r.payer === identity
+      const effectiveMyShare = identity === 'me' ? (r.my_share || 0) : ((r.total_amount || 0) - (r.my_share || 0))
+      const effectiveHerShare = (r.total_amount || 0) - effectiveMyShare
+
+      if (!isMePayer && effectiveMyShare > 0) {
+        tIOwe += effectiveMyShare
+      } else if (isMePayer && effectiveHerShare > 0) {
+        tTheyOwe += effectiveHerShare
+      }
+    })
+
+    const net = tIOwe - tTheyOwe
+    const hasUnsettled = tIOwe > 0 || tTheyOwe > 0
+
+    return {
+      hasUnsettledBills: hasUnsettled,
+      netOwedByMe: net
+    }
+  }, [pendingData, identity])
 
   // If we're not on the login page and we don't have a user yet, 
   // we show a simple loading state or nothing, as the middleware will redirect to /login if needed.
@@ -20,7 +58,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   )
 
   const tabs = [
-    { href: '/', label: '记录', icon: Home },
+    { href: '/', label: 'AI助手', icon: Sparkles },
+    { href: '/records', label: '账本', icon: ScrollText },
     { href: '/stats', label: '统计', icon: BarChart2 },
     { href: '/moments', label: '动态', icon: Aperture },
     { href: '/settings', label: '设置', icon: Settings },
@@ -36,10 +75,49 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           position: 'sticky', top: 0, zIndex: 40,
           borderBottom: '1px solid var(--border)',
         }}>
-          <span style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
-            WeRecord
-          </span>
+          {pathname === '/records' ? (
+            <span style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
+              账本
+            </span>
+          ) : (
+            <span style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
+              WeRecord
+            </span>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {pathname === '/records' && hasUnsettledBills && (
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent('open-batch-settle'))}
+                className="fade-in"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '5px 12px',
+                  borderRadius: '12px',
+                  fontSize: '11px',
+                  fontWeight: '800',
+                  background: netOwedByMe > 0 ? 'var(--red-bg)' : 'var(--green-bg)',
+                  border: `1px solid ${netOwedByMe > 0 ? 'rgba(235, 87, 87, 0.15)' : 'rgba(111, 207, 151, 0.15)'}`,
+                  color: netOwedByMe > 0 ? 'var(--red)' : 'var(--green)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  marginRight: '4px',
+                  boxShadow: 'none'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = 'translateY(-1px)'
+                  e.currentTarget.style.background = netOwedByMe > 0 ? 'var(--red)' : 'var(--green)'
+                  e.currentTarget.style.color = '#fff'
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = 'none'
+                  e.currentTarget.style.background = netOwedByMe > 0 ? 'var(--red-bg)' : 'var(--green-bg)'
+                  e.currentTarget.style.color = netOwedByMe > 0 ? 'var(--red)' : 'var(--green)'
+                }}
+              >
+                {netOwedByMe > 0 ? `应付 ¥${Math.round(netOwedByMe)}` : `应收 ¥${Math.round(Math.abs(netOwedByMe))}`}
+              </button>
+            )}
             <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)' }}>{displayName}</span>
             <div style={{ width: '32px', height: '32px', borderRadius: '10px', overflow: 'hidden', background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
               {avatarUrl ? (
