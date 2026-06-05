@@ -62,8 +62,10 @@ export default function AIAssistantPage() {
   const [showScrollDown, setShowScrollDown] = useState(false)
 
   // Local Image Upload States
-  const [selectedImages, setSelectedImages] = useState<File[]>([])
+  const [selectedImages, setSelectedImages] = useState<{ file: File; previewUrl: string }[]>([])
   const [uploadingImages, setUploadingImages] = useState(false)
+  const selectedImagesRef = useRef(selectedImages)
+  selectedImagesRef.current = selectedImages
   const imageInputRef = useRef<HTMLInputElement>(null)
 
   const supabase = createClient()
@@ -105,6 +107,13 @@ export default function AIAssistantPage() {
     window.addEventListener('clear-chat-history', handleClear)
     return () => window.removeEventListener('clear-chat-history', handleClear)
   }, [displayName])
+
+  // Cleanup selected image preview URLs on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      selectedImagesRef.current.forEach(img => URL.revokeObjectURL(img.previewUrl))
+    }
+  }, [])
 
   // Track scroll position to show/hide the scroll-to-bottom helper button
   const handleScroll = () => {
@@ -249,7 +258,8 @@ export default function AIAssistantPage() {
     if (selectedImages.length > 0) {
       setUploadingImages(true)
       try {
-        for (const file of selectedImages) {
+        for (const item of selectedImages) {
+          const file = item.file
           const fileExt = file.name.split('.').pop()
           const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
           const filePath = `records/${fileName}`
@@ -265,6 +275,7 @@ export default function AIAssistantPage() {
             .getPublicUrl(filePath)
 
           imageUrls.push(publicUrl)
+          URL.revokeObjectURL(item.previewUrl) // Revoke local preview URL to release memory
         }
       } catch (err: any) {
         console.error('Failed to upload records image(s):', err)
@@ -620,8 +631,8 @@ export default function AIAssistantPage() {
               background: 'rgba(0, 0, 0, 0.05)'
             }}
           >
-            {selectedImages.map((file, i) => {
-              const previewUrl = URL.createObjectURL(file)
+            {selectedImages.map((item, i) => {
+              const previewUrl = item.previewUrl
               return (
                 <div 
                   key={i} 
@@ -646,7 +657,10 @@ export default function AIAssistantPage() {
                     }} 
                   />
                   <button
-                    onClick={() => setSelectedImages(prev => prev.filter((_, idx) => idx !== i))}
+                    onClick={() => {
+                      URL.revokeObjectURL(item.previewUrl) // Clean up memory when removing preview
+                      setSelectedImages(prev => prev.filter((_, idx) => idx !== i))
+                    }}
                     style={{
                       position: 'absolute', 
                       top: '-6px', 
@@ -692,7 +706,11 @@ export default function AIAssistantPage() {
                 showToast('最多选择 9 张图片', false)
                 return
               }
-              setSelectedImages(prev => [...prev, ...files])
+              const newImages = files.map(file => ({
+                file,
+                previewUrl: URL.createObjectURL(file)
+              }))
+              setSelectedImages(prev => [...prev, ...newImages])
             }}
           />
 
