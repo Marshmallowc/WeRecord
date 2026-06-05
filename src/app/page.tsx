@@ -4,8 +4,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useIdentity } from '@/context/IdentityContext'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import EmbeddedRecordsList from '@/components/EmbeddedRecordsList'
-import { Send, Sparkles, User, Trash2, ArrowDown, Paperclip } from 'lucide-react'
+import { Send, User, ArrowDown, Paperclip } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { resolveStorageUrl } from '@/lib/utils'
+import ThoughtLoader from '@/components/ThoughtLoader'
 
 interface AAItem {
   name: string
@@ -40,6 +42,7 @@ interface Message {
   image_urls?: string[]
 }
 
+
 export default function AIAssistantPage() {
   const { identity, partnerName, displayName, avatarUrl, partnerAvatarUrl } = useIdentity()
   const [messages, setMessages] = useState<Message[]>([
@@ -53,6 +56,7 @@ export default function AIAssistantPage() {
   ])
   const [inputText, setInputText] = useState('')
   const [isTyping, setIsTyping] = useState(false)
+  const [agentStatus, setAgentStatus] = useState<{ status: 'thinking' | 'calling_tool' | 'tool_complete' | 'responding'; message: string; tool?: string } | null>(null)
   const chatHistoryRef = useRef<HTMLDivElement>(null)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
   const [showScrollDown, setShowScrollDown] = useState(false)
@@ -83,6 +87,24 @@ export default function AIAssistantPage() {
   useEffect(() => {
     scrollToBottom('smooth')
   }, [messages, isTyping])
+
+  // Listen for global clear-chat-history event from top bar
+  useEffect(() => {
+    const handleClear = () => {
+      setMessages([
+        {
+          id: 'welcome',
+          sender: 'assistant',
+          text: `你好 ${displayName}！我是你的情侣财务助理 **Mason**。我会帮你随时翻阅账本、快速录账或平账，你可以随时向我查询有无漏记，或者让我做任何账务操作。
+你可以试着问我以下问题，或者点击下方快捷键：`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ])
+      showToast('会话历史已清空')
+    }
+    window.addEventListener('clear-chat-history', handleClear)
+    return () => window.removeEventListener('clear-chat-history', handleClear)
+  }, [displayName])
 
   // Track scroll position to show/hide the scroll-to-bottom helper button
   const handleScroll = () => {
@@ -136,19 +158,70 @@ export default function AIAssistantPage() {
         })
       })
 
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Server error')
-
-      const aiMsg: Message = {
-        id: `ai-${Date.now()}`,
-        sender: 'assistant',
-        role: 'assistant',
-        text: data.text || '没有返回文本见解。',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        records: data.records
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Server error')
       }
 
-      setMessages(prev => [...prev, aiMsg])
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error('ReadableStream not supported')
+
+      const decoder = new TextDecoder('utf-8')
+      let buffer = ''
+      let finalResult: { text?: string; records?: any[] } = {}
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        
+        // Process SSE lines
+        const lines = buffer.split('\n')
+        // Keep the last partial line in buffer
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          const trimmed = line.trim()
+          if (!trimmed) continue
+          if (trimmed.startsWith('data: ')) {
+            const dataStr = trimmed.slice(6)
+            try {
+              const data = JSON.parse(dataStr)
+              if (data.type === 'status') {
+                setAgentStatus({
+                  status: data.status,
+                  message: data.message,
+                  tool: data.tool
+                })
+              } else if (data.type === 'final') {
+                finalResult = {
+                  text: data.text,
+                  records: data.records
+                }
+              } else if (data.type === 'error') {
+                throw new Error(data.error)
+              }
+            } catch (e) {
+              console.error('Error parsing SSE data line:', line, e)
+            }
+          }
+        }
+      }
+
+      if (finalResult.text) {
+        const aiMsg: Message = {
+          id: `ai-${Date.now()}`,
+          sender: 'assistant',
+          role: 'assistant',
+          text: finalResult.text,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          records: finalResult.records
+        }
+        setMessages(prev => [...prev, aiMsg])
+      } else {
+        throw new Error('未收到完整的 AI 助手回复。')
+      }
     } catch (err: any) {
       console.error('[AI Assistant Chat] Error:', err)
       showToast(err.message || 'AI 助手服务异常，请稍后再试。', false)
@@ -163,6 +236,7 @@ export default function AIAssistantPage() {
       setMessages(prev => [...prev, errorMsg])
     } finally {
       setIsTyping(false)
+      setAgentStatus(null)
     }
   }
 
@@ -401,55 +475,6 @@ export default function AIAssistantPage() {
         </div>
       )}
 
-      {/* Chat Header Status Bar */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '6px 0 12px 0', borderBottom: '1px solid var(--border)',
-        zIndex: 2
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{
-            width: '32px', height: '32px', borderRadius: '10px',
-            overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: '1px solid var(--border)'
-          }}>
-            <img src="/ai-avatar.svg" alt="AI" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          </div>
-          <div>
-            <h2 style={{ fontSize: '14px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
-              理财助理 Mason
-            </h2>
-            <p style={{ fontSize: '9px', color: 'var(--green)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '3px', margin: 0 }}>
-              <span style={{ display: 'inline-block', width: '5px', height: '5px', background: 'var(--green)', borderRadius: '50%' }} />
-              智能 AI 大脑在线
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={() => {
-            setMessages([
-              {
-                id: 'welcome',
-                sender: 'assistant',
-                text: `你好 ${displayName}！我是你的情侣财务助理 **Mason**。我会帮你随时翻阅账本、快速录账或平账，你可以随时向我查询有无漏记，或者让我做任何账务操作。
-你可以试着问我以下问题，或者点击下方快捷键：`,
-                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-              }
-            ])
-            showToast('会话历史已清空')
-          }}
-          style={{
-            background: 'transparent', border: 'none', color: 'var(--text-muted)',
-            cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '6px',
-            transition: 'color 0.2s'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.color = 'var(--red)'}
-          onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
-          title="清空会话"
-        >
-          <Trash2 size={16} />
-        </button>
-      </div>
 
       {/* Messages Feed Area */}
       <div className="chat-history" ref={chatHistoryRef} onScroll={handleScroll} style={{ position: 'relative' }}>
@@ -458,17 +483,15 @@ export default function AIAssistantPage() {
           return (
             <div key={msg.id} className={`message-wrapper ${isUser ? 'user' : 'assistant'}`}>
               <div style={{ display: 'flex', gap: '8px', flexDirection: isUser ? 'row-reverse' : 'row', alignItems: 'flex-start' }}>
-                {/* User/AI Avatars */}
-                <div style={{
-                  width: '28px', height: '28px', borderRadius: '8px', overflow: 'hidden',
-                  background: 'var(--bg-secondary)', border: '1px solid var(--border)', flexShrink: 0
-                }}>
-                  {isUser ? (
-                    avatarUrl ? <img src={avatarUrl} alt="Me" style={{ width: '100%', height: '100%' }} /> : <User size={14} style={{ padding: '7px' }} />
-                  ) : (
-                    <img src="/ai-avatar.svg" alt="AI" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  )}
-                </div>
+                {/* User Avatar (AI avatar removed to maximize content width) */}
+                {isUser && (
+                  <div style={{
+                    width: '28px', height: '28px', borderRadius: '8px', overflow: 'hidden',
+                    background: 'var(--bg-secondary)', border: '1px solid var(--border)', flexShrink: 0
+                  }}>
+                    {avatarUrl ? <img src={avatarUrl} alt="Me" style={{ width: '100%', height: '100%' }} /> : <User size={14} style={{ padding: '7px' }} />}
+                  </div>
+                )}
 
                 {/* Speech Bubble Column */}
                 <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
@@ -491,9 +514,9 @@ export default function AIAssistantPage() {
                         }}
                       >
                         {msg.image_urls.map((url, i) => (
-                          <a key={i} href={url} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                          <a key={i} href={resolveStorageUrl(url)} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
                             <img
-                              src={url}
+                              src={resolveStorageUrl(url)}
                               alt="attachment"
                               style={{ 
                                 width: '64px', 
@@ -531,22 +554,9 @@ export default function AIAssistantPage() {
 
         {/* Typing Indicator dots */}
         {isTyping && (
-          <div className="message-wrapper assistant">
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-              <div style={{
-                width: '28px', height: '28px', borderRadius: '8px', overflow: 'hidden',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                border: '1px solid var(--border)'
-              }}>
-                <img src="/ai-avatar.svg" alt="AI" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              </div>
-              <div className="message-bubble">
-                <div className="typing-dots">
-                  <div className="typing-dot" />
-                  <div className="typing-dot" />
-                  <div className="typing-dot" />
-                </div>
-              </div>
+          <div className="message-wrapper assistant" style={{ marginBottom: '16px' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <ThoughtLoader message={agentStatus ? agentStatus.message : '思考中'} />
             </div>
           </div>
         )}

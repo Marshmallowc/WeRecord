@@ -1,6 +1,6 @@
 import React from 'react'
 import { Check, Bell } from 'lucide-react'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, resolveStorageUrl } from '@/lib/utils'
 import SmartTitle from '@/components/SmartTitle'
 
 interface AAItem {
@@ -116,7 +116,7 @@ export default function AssistantRecordCard({
                 {rec.image_urls.map((url, i) => (
                   <img
                     key={i}
-                    src={url}
+                    src={resolveStorageUrl(url)}
                     alt="attachment"
                     style={{ 
                       width: '44px', 

@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { Trash2 } from 'lucide-react'
-import { formatMomentTime } from '@/lib/utils'
+import { formatMomentTime, resolveStorageUrl } from '@/lib/utils'
 
 interface MomentCardProps {
   moment: any
@@ -126,8 +126,7 @@ export default function MomentCard({
             marginBottom: '10px'
           }}>
             {allImages.map((url: any, idx: number) => {
-              const isBlob = url.startsWith('blob:')
-              const storageUrl = isBlob ? url : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/record_images${url}`
+              const storageUrl = resolveStorageUrl(url)
 
               return (
                 <div

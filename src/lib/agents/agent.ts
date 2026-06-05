@@ -14,7 +14,7 @@ const SYSTEM_PROMPT_TEMPLATE = (myIdentity: string, myName: string, partnerName:
 1. 严禁 Emoji：你的所有最终文本回复中禁止出现任何 Emoji 表情符号，保持简洁、有温度且风趣幽默的语气。
 2. 回复长度：控制在 150 - 250 字之间，用词精炼，直奔主题。
 3. 数据安全与隐私：你只能使用分配给你的工具来查写数据。禁止透露内部 ID，只将卡片实体或摘要反馈给用户。
-4. 语言解析：如果用户提到“我”，表示 ${myName}；如果提到“Ta”或“${partnerName}”，表示伴侣。
+4. 语言解析：如果用户提到“我”或“我自己”，表示 ${myName}；如果提到“Ta”、“他”、“她”或“${partnerName}”，一律表示伴侣（因为用户输入中经常存在输入法拼音导致的错别字，不管代词性别如何，请始终将其映射为伴侣）。
 
 工具调用说明：
 - 在开始回答用户关于具体账目是否记过、金额多少等问题前，请务必先调用 query_records 工具进行检索。
@@ -43,7 +43,9 @@ const TOOL_SCHEMAS = [
           "record_type": { "type": "string", "enum": ["aa", "gift"], "description": "要筛选的记录类型：'aa' (支出) 或 'gift' (礼物)。不传则查全部。" },
           "start_date": { "type": "string", "description": "查询的起始日期，格式 YYYY-MM-DD（如 '2026-05-01'）" },
           "end_date": { "type": "string", "description": "查询的结束日期，格式 YYYY-MM-DD" },
-          "status": { "type": "string", "enum": ["pending", "settled"], "description": "仅针对AA账单进行过滤：'pending' (未平账/待结清) 或 'settled' (已平账/已结清)。" }
+          "status": { "type": "string", "enum": ["pending", "settled"], "description": "仅针对AA账单进行过滤：'pending' (未平账/待结清) 或 'settled' (已平账/已结清)。" },
+          "order": { "type": "string", "enum": ["desc", "asc"], "description": "排序顺序，默认为 'desc' (最新的在前)。若要查询最早、第一笔账单，请传入 'asc' (最旧的在前)。" },
+          "limit": { "type": "integer", "description": "返回的最大记录数，默认为 30。" }
         }
       }
     }
@@ -56,7 +58,7 @@ const TOOL_SCHEMAS = [
       "parameters": {
         "type": "object",
         "properties": {
-          "text": { "type": "string", "description": "用户的自然语言账务记录语句" }
+          "text": { "type": "string", "description": "用户原始的自然语言账务记录语句。必须直接传入用户的原始原话（例如“今天东区帮他买饭21元”），严禁你自行修改、润色、重写或翻译，不要擅自添加任何额外字眼（如不要添加“AA分摊”等）。" }
         },
         "required": ["text"]
       }
@@ -93,8 +95,27 @@ const TOOL_SCHEMAS = [
         "required": ["body"]
       }
     }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_financial_stats",
+      "description": "获取指定时间段内（或所有时间）的情侣账目统计摘要和分类消费占比。包含AA总支出、当前谁欠谁多少钱（结余）、各自送礼总额及各个分类的消费总和。当用户询问“我们这月/这周花了多少”、“当前谁欠谁钱”、“分类支出占比”等宏观统计问题时，必须优先调用此工具，严禁使用query_records查询全部明细来人工累加计算。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "start_date": { "type": "string", "description": "起始日期，格式 YYYY-MM-DD（如 '2026-05-01'）" },
+          "end_date": { "type": "string", "description": "结束日期，格式 YYYY-MM-DD" }
+        }
+      }
+    }
   }
 ]
+
+export type AgentStep =
+  | { type: 'status'; status: 'thinking' | 'calling_tool' | 'tool_complete' | 'responding'; message: string; tool?: string }
+  | { type: 'final'; text: string; records?: any[] }
+  | { type: 'error'; error: string }
 
 export class AIAgent {
   private context: AgentContext
@@ -103,7 +124,10 @@ export class AIAgent {
     this.context = context
   }
 
-  async run(chatMessages: { role: 'user' | 'assistant' | 'system' | 'tool'; content: string; name?: string; tool_call_id?: string }[]) {
+  async run(
+    chatMessages: { role: 'user' | 'assistant' | 'system' | 'tool'; content: string; name?: string; tool_call_id?: string }[],
+    onStep?: (step: AgentStep) => void
+  ) {
     // 1. Prepare messages list for DeepSeek
     const todayDate = new Date().toISOString().split('T')[0] // Get today's local YYYY-MM-DD
     const systemPrompt = SYSTEM_PROMPT_TEMPLATE(this.context.identity, this.context.displayName, this.context.partnerName, todayDate)
@@ -122,6 +146,7 @@ export class AIAgent {
     while (iterations < maxIterations) {
       iterations++
       console.log(`[AIAgent] Running iteration ${iterations}...`)
+      onStep?.({ type: 'status', status: 'thinking', message: '思考中' })
 
       const response = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',
@@ -164,6 +189,7 @@ export class AIAgent {
       // If the model does not want to make tool calls, we are finished
       if (!message.tool_calls || message.tool_calls.length === 0) {
         console.log(`[AIAgent] Loop finished. Returning final response: "${message.content}"`)
+        onStep?.({ type: 'status', status: 'responding', message: '准备回复中' })
         return {
           text: message.content || '',
           records: collectedRecords.length > 0 ? collectedRecords : undefined
@@ -176,6 +202,17 @@ export class AIAgent {
         const { name, arguments: rawArgs } = toolCall.function
         const parsedArgs = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs
         console.log(`[AIAgent] Executing tool: ${name} with args:`, parsedArgs)
+
+        const toolMessages: Record<string, { start: string; end: string }> = {
+          get_couple_profile: { start: '读取情侣伙伴资料中', end: '资料读取完成' },
+          query_records: { start: '检索账目记录中', end: '账目检索完成' },
+          add_record: { start: '起草记账卡片中', end: '记账草稿已生成' },
+          settle_bills: { start: '办理结账手续中', end: '结账手续办理完毕' },
+          notify_partner: { start: '向伙伴发送消息提醒中', end: '消息提醒发送成功' },
+          get_financial_stats: { start: '汇总财务开支数据中', end: '财务数据汇总完毕' }
+        }
+        const msg = toolMessages[name] || { start: `运行工具 ${name} 中`, end: `工具 ${name} 运行完成` }
+        onStep?.({ type: 'status', status: 'calling_tool', tool: name, message: msg.start })
 
         let toolResult: any = null
 
@@ -206,11 +243,15 @@ export class AIAgent {
           case 'notify_partner':
             toolResult = await tools.notify_partner(this.context, parsedArgs)
             break
+          case 'get_financial_stats':
+            toolResult = await tools.get_financial_stats(this.context, parsedArgs)
+            break
           default:
             toolResult = { success: false, error: `Unknown tool name: ${name}` }
         }
 
         console.log(`[AIAgent] Tool result for ${name}:`, toolResult)
+        onStep?.({ type: 'status', status: 'tool_complete', tool: name, message: msg.end })
 
         // Append tool call result message
         messagesToSend.push({

@@ -4,7 +4,7 @@ import { useIdentity } from '@/context/IdentityContext'
 import IdentitySelector from './IdentitySelector'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ScrollText, BarChart2, Settings, User, Aperture, Sparkles } from 'lucide-react'
+import { ScrollText, BarChart2, Settings, User, Aperture, Sparkles, Trash2 } from 'lucide-react'
 import { useMemo } from 'react'
 import useSWR from 'swr'
 import { formatCurrency } from '@/lib/utils'
@@ -116,6 +116,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 }}
               >
                 {netOwedByMe > 0 ? `应付 ¥${Math.round(netOwedByMe)}` : `应收 ¥${Math.round(Math.abs(netOwedByMe))}`}
+              </button>
+            )}
+            {pathname === '/' && (
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent('clear-chat-history'))}
+                style={{
+                  background: 'transparent', border: 'none', color: 'var(--text-muted)',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '6px',
+                  transition: 'color 0.2s', marginRight: '2px', outline: 'none'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--red)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                title="清空会话"
+              >
+                <Trash2 size={16} />
               </button>
             )}
             <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)' }}>{displayName}</span>

@@ -41,16 +41,17 @@ AA 账单 (aa)：
    - 使用 'me' 指代“当前身份”（即正在说话的用户）。
    - 使用 'her' 指代“对方/伙伴”。
 3. 即使当前身份是“她”，在 JSON 中也要用 'me' 来指代她自己，用 'her' 指代对方。
-4. 债务（AA）分摊逻辑：
+4. 代词与错别字容错（极其重要）：不论用户输入中出现的是“他”、“她”还是“Ta”，在判定身份时一律代指“对方/伙伴”（即 'her'），绝对不能根据代词的性别特征去强行和男女用户对齐。因为手机输入法中极易打错拼音。只有当明确说“我”、“我自己”时才指代当前说话人（即 'me'）。例如：“帮他买饭”是指“我帮对方买饭”（payer: 'me', my_share: 0）。
+5. 债务（AA）分摊逻辑：
    - 默认 AA：如果没有特别说明，默认双方平摊，my_share 为总金额的一半（即说话人自己应负担的金额）。
-   - 借款/代付全部：
-     - 如果是“我借给对方X元”或“我帮对方付了全部X元”，则 payer 为 'me', my_share 为 0 (表示说话人自己应负担 0，金额全由对方负责)。
-     - 如果是“对方借给我X元”或“对方帮我付了全部X元”，则 payer 为 'her', my_share 为 X (表示说话人自己应负担 X)。
-5. 语义解析示例：
+   - 借款/代付/帮对方付全部：
+     - 如果是“我借给对方X元”、“我帮对方付了全部X元”、“帮他/她买饭/买东西 X元”等我垫付或代付场景，则 payer 为 'me', my_share 为 0 (表示说话人自己应负担 0，金额全由对方负责)。
+     - 如果是“对方借给我X元”、“对方帮我付了全部X元”、“他/她帮我买饭/买东西 X元”等，则 payer 为 'her', my_share 为 X (表示说话人自己应负担 X)。
+6. 语义解析示例：
    - "我请..."、"我买了礼物送给..." -> type: "gift", from: 'me', to: 'her'。
    - "她请我..." -> type: "gift", from: 'her', to: 'me'。
    - "我付了..." -> type: "aa", payer: 'me' (默认平摊)。
-6. 如果未指明支付人或送礼人，默认 payer/from 为 'me'。`
+7. 如果未指明支付人或送礼人，默认 payer/from 为 'me'。`
 
 export interface AgentContext {
   supabase: SupabaseClient
@@ -86,6 +87,8 @@ export async function query_records(
     start_date?: string
     end_date?: string
     status?: 'pending' | 'settled'
+    order?: 'desc' | 'asc'
+    limit?: number
   }
 ) {
   const { supabase, coupleId } = context
@@ -140,18 +143,22 @@ export async function query_records(
       combined = [...giftItems, ...billItems]
     }
 
-    // Sort by date (descending) then created_at (descending)
+    // Sort by date then created_at based on order parameter
+    const isAsc = args.order === 'asc'
     combined.sort((a: any, b: any) => {
       const d1 = new Date(a.date).getTime()
       const d2 = new Date(b.date).getTime()
-      if (d1 !== d2) return d2 - d1
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      if (d1 !== d2) return isAsc ? d1 - d2 : d2 - d1
+      return isAsc
+        ? new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        : new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     })
 
-    // Return first 30 matches to prevent token overflow
+    // Return first N matches to prevent token overflow
+    const limitVal = args.limit || 30
     return {
       success: true,
-      records: combined.slice(0, 30)
+      records: combined.slice(0, limitVal)
     }
   } catch (err: any) {
     console.error('[Agent Tool: query_records] Error:', err)
@@ -207,14 +214,23 @@ export async function add_record(
     // 2. Generate drafts details
     for (const record of resultsList) {
       const tempId = `draft-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+      
+      // Map speaker-centric values ('me' = speaker, 'her' = partner) to database static identities
+      const resolveIdentity = (val: string) => {
+        if (identity !== 'her') return val
+        if (val === 'me') return 'her'
+        if (val === 'her') return 'me'
+        return val
+      }
+
       if (record.type === 'gift') {
         const { from, to, title, amount, description, date, category } = record
         parsedDrafts.push({
           id: tempId,
           record_type: 'gift',
           is_draft: true,
-          from_user: from || 'me',
-          to_user: to || 'her',
+          from_user: resolveIdentity(from || 'me'),
+          to_user: resolveIdentity(to || 'her'),
           title: title || '礼物记录',
           amount: amount ?? null,
           description: description ?? null,
@@ -225,14 +241,19 @@ export async function add_record(
         })
       } else if (record.type === 'aa') {
         const { payer, items: aaItems, total, my_share, note, date } = record
+        const dbPayer = resolveIdentity(payer || 'me')
+        // my_share in database is stored relative to identity 'me' (boy).
+        // If the calling user is 'her' (girl), her parsed my_share responsiblity needs to be converted for 'me'.
+        const dbMyShare = identity === 'her' ? (total - (my_share || 0)) : (my_share || 0)
+
         parsedDrafts.push({
           id: tempId,
           record_type: 'aa',
           is_draft: true,
-          payer: payer || 'me',
+          payer: dbPayer,
           status: 'pending',
           total_amount: total,
-          my_share: my_share,
+          my_share: dbMyShare,
           source_text: args.text,
           image_urls: imageUrls,
           note: note ?? null,
@@ -351,3 +372,111 @@ export async function notify_partner(
     return { success: false, error: err.message }
   }
 }
+
+// 6. Get Financial Stats Tool (Aggregated spending, balances, and category breakdowns)
+export async function get_financial_stats(
+  context: AgentContext,
+  args: {
+    start_date?: string
+    end_date?: string
+  }
+) {
+  const { supabase, coupleId, identity } = context
+  try {
+    let giftQuery = supabase
+      .from('gifts')
+      .select('from_user, amount, category, date')
+      .eq('couple_id', coupleId)
+
+    let billQuery = supabase
+      .from('aa_bills')
+      .select('payer, status, my_share, total_amount, date, aa_items(amount, category)')
+      .eq('couple_id', coupleId)
+
+    if (args.start_date) {
+      giftQuery = giftQuery.gte('date', args.start_date)
+      billQuery = billQuery.gte('date', args.start_date)
+    }
+    if (args.end_date) {
+      giftQuery = giftQuery.lte('date', args.end_date)
+      billQuery = billQuery.lte('date', args.end_date)
+    }
+
+    const [giftsRes, billsRes] = await Promise.all([giftQuery, billQuery])
+    if (giftsRes.error) throw giftsRes.error
+    if (billsRes.error) throw billsRes.error
+
+    const gifts = giftsRes.data || []
+    const bills = billsRes.data || []
+
+    let totalGiftsMe = 0
+    let totalGiftsPartner = 0
+    let totalSpentAA = 0
+    let pendingBalance = 0 // Caller perspective
+    let pendingCount = 0
+
+    const categoryTotals: Record<string, number> = {}
+
+    // Process gifts
+    gifts.forEach((g: any) => {
+      const amt = Number(g.amount || 0)
+      if (g.from_user === 'me') {
+        totalGiftsMe += amt
+      } else {
+        totalGiftsPartner += amt
+      }
+      const cat = g.category || '礼物'
+      categoryTotals[cat] = (categoryTotals[cat] || 0) + amt
+    })
+
+    // Process bills
+    bills.forEach((b: any) => {
+      const total = Number(b.total_amount || 0)
+      const share = Number(b.my_share || 0)
+      totalSpentAA += total
+
+      if (b.status === 'pending') {
+        pendingCount++
+        // Calculate raw pending balance from the perspective of the profile identity 'me'
+        const rawChange = b.payer === 'me' ? (total - share) : -share
+        // Adjust relative to the caller's identity ('me' or 'her')
+        pendingBalance += identity === 'me' ? rawChange : -rawChange
+      }
+
+      // Category breakdown from items or bill level
+      if (b.aa_items && b.aa_items.length > 0) {
+        b.aa_items.forEach((item: any) => {
+          const cat = item.category || '未分类'
+          categoryTotals[cat] = (categoryTotals[cat] || 0) + Number(item.amount || 0)
+        })
+      } else {
+        const cat = b.category || '未分类'
+        categoryTotals[cat] = (categoryTotals[cat] || 0) + total
+      }
+    })
+
+    // Format results relative to caller's identity
+    const totalGiftsByMe = identity === 'me' ? totalGiftsMe : totalGiftsPartner
+    const totalGiftsByPartner = identity === 'me' ? totalGiftsPartner : totalGiftsMe
+
+    return {
+      success: true,
+      timeframe: {
+        start: args.start_date || '所有时间',
+        end: args.end_date || '所有时间'
+      },
+      summary: {
+        total_spent_aa: totalSpentAA,
+        pending_count: pendingCount,
+        pending_balance: pendingBalance, // positive: partner owes me, negative: I owe partner
+        gifts_by_me: totalGiftsByMe,
+        gifts_by_partner: totalGiftsByPartner
+      },
+      category_breakdown: categoryTotals
+    }
+  } catch (err: any) {
+    console.error('[Agent Tool: get_financial_stats] Error:', err)
+    return { success: false, error: err.message }
+  }
+}
+

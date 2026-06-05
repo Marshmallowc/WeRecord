@@ -81,3 +81,12 @@ export function formatMomentTime(isoString: string) {
 
   return `${date.getFullYear()}年${month}月${day}日 ${hhmm}`;
 }
+
+export function resolveStorageUrl(url: string | null | undefined): string {
+  if (!url) return ''
+  if (url.startsWith('blob:') || url.startsWith('http://') || url.startsWith('https://')) {
+    return url
+  }
+  const relativePath = url.startsWith('/') ? url : `/${url}`
+  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/record_images${relativePath}`
+}

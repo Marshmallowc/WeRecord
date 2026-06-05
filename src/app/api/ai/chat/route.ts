@@ -62,13 +62,38 @@ export async function POST(req: NextRequest) {
       image_urls: image_urls || []
     }
 
-    // 6. Run AIAgent Loop
-    const agent = new AIAgent(context)
-    const result = await agent.run(cleanedMessages)
+    // 6. Run AIAgent in streaming mode
+    const encoder = new TextEncoder()
+    const stream = new ReadableStream({
+      async start(controller) {
+        const sendStep = (step: any) => {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(step)}\n\n`))
+        }
 
-    return NextResponse.json(result)
+        try {
+          const agent = new AIAgent(context)
+          const result = await agent.run(cleanedMessages, (step) => {
+            sendStep(step)
+          })
+          sendStep({ type: 'final', text: result.text, records: result.records })
+        } catch (err: any) {
+          console.error('[API Chat Route Streaming] Agent run failed:', err)
+          sendStep({ type: 'error', error: err.message || 'AI Assistant run failed' })
+        } finally {
+          controller.close()
+        }
+      }
+    })
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache, no-transform',
+        'Connection': 'keep-alive',
+      }
+    })
   } catch (err: any) {
-    console.error('[API Chat Route] Execution failed:', err)
-    return NextResponse.json({ error: err.message || 'AI Assistant service internal failure' }, { status: 500 })
+    console.error('[API Chat Route] Initialization failed:', err)
+    return NextResponse.json({ error: err.message || 'AI Assistant service initialization failure' }, { status: 500 })
   }
 }

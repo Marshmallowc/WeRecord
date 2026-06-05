@@ -30,14 +30,6 @@ export async function POST(req: NextRequest) {
     const { type, result, source_text } = entry
     if (!type || !result) continue
 
-    // Helper to map speaker-centric identities ('me' meaning speaker) to DB identities
-    const resolve = (val: string) => {
-      if (identity !== 'her') return val // Already 'me'
-      if (val === 'me') return 'her'
-      if (val === 'her') return 'me'
-      return val
-    }
-
     if (type === 'gift') {
       const { from, to, title, amount, description, date, category, image_urls } = result
       if (category) {
@@ -49,8 +41,8 @@ export async function POST(req: NextRequest) {
       const { data, error } = await supabase.from('gifts').insert([{
         couple_id: coupleId,
         creator_id: user.id,
-        from_user: resolve(from || 'me'),
-        to_user: resolve(to || 'her'),
+        from_user: from || 'me',
+        to_user: to || 'her',
         title,
         amount: amount ?? null,
         description: description ?? null,
@@ -74,12 +66,10 @@ export async function POST(req: NextRequest) {
       const { data: bill, error: billError } = await supabase.from('aa_bills').insert([{
         couple_id: coupleId,
         creator_id: user.id,
-        payer: resolve(payer || 'me'),
+        payer: payer || 'me',
         status: 'pending',
         total_amount: total,
-        // If speaker is 'her', AI's my_share is her responsibility. 
-        // We save the 'me' (boy) responsibility to the DB.
-        my_share: identity === 'her' ? (total - my_share) : my_share,
+        my_share: my_share || 0,
         source_text,
         image_urls: image_urls ?? [],
         // 核心优化：将 AI 总结的标题存入 note 头部，方便 SmartTitle 组件解析
