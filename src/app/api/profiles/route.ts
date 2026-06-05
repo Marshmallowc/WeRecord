@@ -13,7 +13,7 @@ export async function GET() {
 export async function PATCH(req: NextRequest) {
   const supabase = await createClient()
   const body = await req.json()
-  const { id, display_name, avatar_url, alipay_code } = body
+  const { id, display_name, avatar_url, alipay_code, identity } = body
 
   if (!id) return NextResponse.json({ error: 'Missing ID' }, { status: 400 })
 
@@ -24,6 +24,7 @@ export async function PATCH(req: NextRequest) {
       display_name,
       avatar_url,
       alipay_code,
+      identity,
       updated_at: new Date().toISOString()
     })
     .select()
