@@ -154,10 +154,29 @@ export async function query_records(
         : new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     })
 
+    // Calculate aggregates before slicing to prevent AI hallucination
+    let sum_aa_total = 0;
+    let sum_aa_my_share = 0;
+    let sum_gift_total = 0;
+
+    combined.forEach(r => {
+      if (r.record_type === 'aa') {
+        sum_aa_total += Number(r.total_amount) || 0;
+        sum_aa_my_share += Number(r.my_share) || 0;
+      } else if (r.record_type === 'gift') {
+        sum_gift_total += Number(r.amount) || 0;
+      }
+    });
+
     // Return first N matches to prevent token overflow
     const limitVal = args.limit || 30
     return {
       success: true,
+      total_count: combined.length,
+      sum_aa_total: parseFloat(sum_aa_total.toFixed(2)),
+      sum_aa_my_share: parseFloat(sum_aa_my_share.toFixed(2)),
+      sum_gift_total: parseFloat(sum_gift_total.toFixed(2)),
+      has_more: combined.length > limitVal,
       records: combined.slice(0, limitVal)
     }
   } catch (err: any) {
