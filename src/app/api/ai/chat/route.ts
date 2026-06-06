@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     const partnerName = partnerProfile?.display_name || (myProfile.identity === 'me' ? '对方' : 'Ta')
 
     // 4. Retrieve message thread
-    const { messages, image_urls } = await req.json()
+    const { messages, image_urls, stream: shouldStream = true } = await req.json()
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Missing conversation history' }, { status: 400 })
     }
@@ -60,6 +60,18 @@ export async function POST(req: NextRequest) {
       displayName: myProfile.display_name || '用户',
       partnerName: partnerName,
       image_urls: image_urls || []
+    }
+
+    // 5.5 If client requests non-streaming, execute agent synchronously and return JSON
+    if (!shouldStream) {
+      try {
+        const agent = new AIAgent(context)
+        const result = await agent.run(cleanedMessages)
+        return NextResponse.json({ type: 'final', text: result.text, records: result.records })
+      } catch (err: any) {
+        console.error('[API Chat Route Non-Streaming] Agent run failed:', err)
+        return NextResponse.json({ error: err.message || 'AI Assistant run failed' }, { status: 500 })
+      }
     }
 
     // 6. Run AIAgent in streaming mode
