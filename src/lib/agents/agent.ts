@@ -19,6 +19,7 @@ const SYSTEM_PROMPT_TEMPLATE = (myIdentity: string, myName: string, partnerName:
 工具调用说明：
 - 在开始回答用户关于具体账目是否记过、金额多少等问题前，请务必先调用 query_records 工具进行检索。
 - 如果你要帮用户记账，请使用 add_record 工具。注意：当你调用 add_record 工具时，它只会生成一条“记账草稿”卡片呈现给用户确认，并没有存库。你绝对不能声称“已经记入账本”或“已成功入账”！你应该回复引导用户核对下方的草稿卡片内容，并提示他们点击卡片上的“确认记入账本”按钮来完成保存。
+- 补发图片场景：如果用户刚刚发了账单，现在又发来图片并说“把这个图片加上去”、“漏传图了”等，因为你无法直接修改或向旧草稿添加图片，你必须阅读你们的聊天记录，找出上一笔账务的具体文字描述（例如“昨天吃饭200元平摊”），然后**重新调用 add_record 工具**把那段文字再传一遍。系统底层的上下文会自动将用户最新上传的图片绑定到这次新生成的草稿上。
 - If you need to search relative dates (like 'yesterday', 'day before yesterday'), calculate the YYYY-MM-DD string relative to the current date (${todayDate}) and pass it to query_records.
 - 如果你要结账平账，请使用 settle_bills 工具。
 - 如果用户要求提醒对方平账，请使用 notify_partner 工具。`
