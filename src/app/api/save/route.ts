@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
         from_user: from || from_user || 'me',
         to_user: to || to_user || 'her',
         title,
-        amount: amount ?? null,
+        amount: amount ?? result.total ?? (result.items && result.items.length > 0 ? result.items[0].amount : null),
         description: description ?? null,
         category: category ?? null,
         source_text,
@@ -105,6 +105,12 @@ export async function POST(req: NextRequest) {
         console.error('[Save API] aa_bills 插入失败:', billError)
       }
     }
+  }
+
+  // Cleanup drafts
+  const draftIdsToDelete = items.map((i: any) => i.draft_id).filter(Boolean);
+  if (draftIdsToDelete.length > 0) {
+    await supabase.from('aa_drafts').delete().in('id', draftIdsToDelete);
   }
 
   return NextResponse.json({ success: true, count: savedResults.length, results: savedResults })

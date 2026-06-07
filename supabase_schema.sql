@@ -133,3 +133,16 @@ ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "manage_own_push" ON push_subscriptions FOR ALL USING (
   couple_id = get_my_couple_id()
 );
+
+-- 12. AA草稿表 (架构升级新增)
+CREATE TABLE IF NOT EXISTS aa_drafts (
+  id TEXT PRIMARY KEY,
+  couple_id UUID REFERENCES couples(id) ON DELETE CASCADE,
+  creator_id UUID REFERENCES auth.users(id),
+  record_type TEXT NOT NULL CHECK (record_type IN ('gift', 'aa')),
+  payload JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE aa_drafts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "manage_group_drafts" ON aa_drafts FOR ALL USING (couple_id = get_my_couple_id());

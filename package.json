@@ -22,7 +22,8 @@
     "react-virtuoso": "^4.18.7",
     "swr": "^2.4.1",
     "tailwind-merge": "^3.5.0",
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

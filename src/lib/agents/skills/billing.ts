@@ -1,9 +1,10 @@
+import { z } from 'zod'
 import { Skill, ToolDefinition } from '../registry'
 
 const PARSER_SYSTEM_PROMPT = `你是一个专业、严谨的情侣支出与礼物管理助手。请根据用户输入识别出所有的消费或礼物记录，并返回一个结果数组。
 
 重要规则：
-1. 返回格式：必须是一个 JSON 数组，例如：[{"type": "gift", ...}, {"type": "aa", ...}]。
+1. 返回格式：必须是一个 JSON 对象，包含一个 records 数组，例如：{"records": [{"type": "gift", ...}, {"type": "aa", ...}]}。
 2. 严禁 Emoji：返回的文字内容中禁止包含任何 Emoji 表情。
 3. 数字解析：鲁棒地处理金额，例如 "19。9" 应解析为 19.9。
 
@@ -63,7 +64,7 @@ export const addRecordTool: ToolDefinition<{ text: string }> = {
     required: ['text']
   },
   execute: async (context, args) => {
-    const { userId, coupleId, identity } = context
+        const { userId, coupleId, identity, supabase } = context
     const imageUrls = context.image_urls || []
 
     try {
@@ -76,6 +77,7 @@ export const addRecordTool: ToolDefinition<{ text: string }> = {
         },
         body: JSON.stringify({
           model: 'deepseek-chat',
+          response_format: { type: 'json_object' },
           messages: [
             { role: 'system', content: PARSER_SYSTEM_PROMPT },
             {
@@ -97,13 +99,64 @@ export const addRecordTool: ToolDefinition<{ text: string }> = {
       const content = aiData.choices?.[0]?.message?.content
       if (!content) throw new Error('Parser returned empty response')
 
-      const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-      const items = JSON.parse(cleaned)
-      const resultsList = Array.isArray(items) ? items : [items]
+      // 2. Define Zod Schemas for defensive parsing
+      const giftSchema = z.object({
+        type: z.literal('gift'),
+        from: z.enum(['me', 'her']).optional().default('me'),
+        to: z.enum(['me', 'her']).optional().default('her'),
+        title: z.string().optional().default('礼物记录'),
+        category: z.string().optional().nullable(),
+        amount: z.number().nullable().optional(),
+        total: z.number().nullable().optional(), // Coercion field
+        items: z.array(z.object({ amount: z.number().optional() })).optional(), // Coercion field
+        description: z.string().optional().nullable(),
+        date: z.string().optional().nullable()
+      }).transform(data => ({
+        ...data,
+        amount: data.amount ?? data.total ?? (data.items?.[0]?.amount ?? null)
+      }))
 
+      const aaItemSchema = z.object({
+        name: z.string().optional().default('支出项'),
+        amount: z.number().optional(),
+        category: z.string().optional().nullable()
+      })
+
+      const aaSchema = z.object({
+        type: z.literal('aa'),
+        payer: z.enum(['me', 'her']).optional().default('me'),
+        title: z.string().optional().default('支出记录'),
+        items: z.array(aaItemSchema).optional(),
+        total: z.number().optional().default(0),
+        my_share: z.number().optional(),
+        note: z.string().optional().nullable(),
+        status: z.enum(['pending', 'settled']).optional().default('pending'),
+        date: z.string().optional().nullable()
+      })
+
+      const aiOutputSchema = z.object({
+        records: z.array(z.union([giftSchema, aaSchema]))
+      })
+
+      // 3. Parse and Coerce
+      let parsedJson;
+      try {
+        parsedJson = JSON.parse(content);
+      } catch (e) {
+        throw new Error('AI returned malformed JSON: ' + content);
+      }
+      
+      const validationResult = aiOutputSchema.safeParse(parsedJson);
+      if (!validationResult.success) {
+        console.error('Zod Parsing Error:', validationResult.error);
+        throw new Error('AI 返回的数据结构无法解析，请重试');
+      }
+
+      const resultsList = validationResult.data.records;
       const parsedDrafts: any[] = []
+      const draftsToInsert: any[] = []
 
-      // 2. Generate drafts details
+      // 4. Generate drafts details
       for (const record of resultsList) {
         const tempId = `draft-${Date.now()}-${Math.floor(Math.random() * 1000)}`
         
@@ -115,55 +168,78 @@ export const addRecordTool: ToolDefinition<{ text: string }> = {
           return val
         }
 
+        let draftDisplayPayload: any;
+
         if (record.type === 'gift') {
           const { from, to, title, amount, description, date, category } = record
-          parsedDrafts.push({
+          
+          draftDisplayPayload = {
             id: tempId,
             record_type: 'gift',
             is_draft: true,
-            from_user: resolveIdentity(from || 'me'),
-            to_user: resolveIdentity(to || 'her'),
-            title: title || '礼物记录',
-            amount: amount ?? null,
+            from_user: resolveIdentity(from),
+            to_user: resolveIdentity(to),
+            title,
+            amount: amount,
             description: description ?? null,
             category: category ?? null,
             source_text: args.text,
             image_urls: imageUrls,
             date: date ?? new Date().toISOString().split('T')[0],
-          })
+          }
         } else if (record.type === 'aa') {
           const { payer, items: aaItems, total, my_share, note, date } = record
-          const dbPayer = resolveIdentity(payer || 'me')
-          // my_share in database is stored relative to identity 'me' (boy).
-          // If the calling user is 'her' (girl), her parsed my_share responsibility needs to be converted for 'me'.
+          const dbPayer = resolveIdentity(payer)
           const dbMyShare = identity === 'her' ? (total - (my_share || 0)) : (my_share || 0)
 
-          parsedDrafts.push({
+          draftDisplayPayload = {
             id: tempId,
             record_type: 'aa',
             is_draft: true,
             payer: dbPayer,
-            status: record.status || 'pending',
+            status: record.status,
             total_amount: total,
             my_share: dbMyShare,
             source_text: args.text,
             image_urls: imageUrls,
             note: note ?? null,
-            title: record.title || '支出记录',
-            aa_items: aaItems?.map((item: any, idx: number) => ({
+            title: record.title,
+            aa_items: aaItems?.map((item, idx) => ({
               id: `draft-item-${tempId}-${idx}`,
-              name: item.name || '支出项',
-              amount: item.amount ?? (aaItems.length === 1 ? (total || 0) : 0),
+              name: item.name,
+              amount: item.amount ?? (aaItems.length === 1 ? total : 0),
               category: item.category ?? null
-            })) ?? [{ id: `draft-item-${tempId}-0`, name: '生活杂项', amount: total, category: null }]
-          })
+            })) ?? [{ id: `draft-item-${tempId}-0`, name: '生活杂项', amount: total, category: null }],
+            date: date ?? new Date().toISOString().split('T')[0],
+          }
+        }
+
+        parsedDrafts.push(draftDisplayPayload)
+        
+        draftsToInsert.push({
+          id: tempId,
+          couple_id: coupleId,
+          creator_id: userId,
+          record_type: record.type,
+          payload: draftDisplayPayload,
+          created_at: new Date().toISOString()
+        })
+      }
+
+      // 5. Save Drafts to Server
+      if (draftsToInsert.length > 0) {
+        if (!supabase) throw new Error('Supabase client not found in context');
+        const { error: insertError } = await supabase.from('aa_drafts').insert(draftsToInsert);
+        if (insertError) {
+          console.error('Failed to save drafts:', insertError);
+          throw new Error('草稿保存失败');
         }
       }
 
       return {
         success: true,
         count: parsedDrafts.length,
-        records: parsedDrafts
+        records: parsedDrafts.map(d => ({ draft_id: d.id, ...d })) // ensure draft_id is explicitly passed if needed
       }
     } catch (err: any) {
       console.error('[Agent Tool: add_record] Error:', err)
