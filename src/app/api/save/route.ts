@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     if (!type || !result) continue
 
     if (type === 'gift') {
-      const { from, to, title, amount, description, date, category, image_urls } = result
+      const { from, to, from_user, to_user, title, amount, description, date, category, image_urls } = result
       if (category) {
         await supabase.from('categories').upsert({ 
           name: category, 
@@ -41,8 +41,8 @@ export async function POST(req: NextRequest) {
       const { data, error } = await supabase.from('gifts').insert([{
         couple_id: coupleId,
         creator_id: user.id,
-        from_user: from || 'me',
-        to_user: to || 'her',
+        from_user: from || from_user || 'me',
+        to_user: to || to_user || 'her',
         title,
         amount: amount ?? null,
         description: description ?? null,
@@ -53,8 +53,9 @@ export async function POST(req: NextRequest) {
       }]).select().single()
       if (!error) savedResults.push({ data, type: 'gift' })
     } else if (type === 'aa') {
-      const { payer, items: aaItems, total, my_share, note, date, image_urls } = result
-      const categories = Array.from(new Set(((aaItems || []) as any[]).map(i => i.category).filter(Boolean)))
+      const { payer, items: aaItems, aa_items, total, total_amount, my_share, note, date, image_urls, status } = result
+      const finalAAItems = aaItems || aa_items
+      const categories = Array.from(new Set(((finalAAItems || []) as any[]).map(i => i.category).filter(Boolean)))
 
       if (categories.length > 0) {
         await supabase.from('categories').upsert(
@@ -63,12 +64,14 @@ export async function POST(req: NextRequest) {
         )
       }
 
+      const billTotal = total ?? total_amount
+
       const { data: bill, error: billError } = await supabase.from('aa_bills').insert([{
         couple_id: coupleId,
         creator_id: user.id,
         payer: payer || 'me',
-        status: 'pending',
-        total_amount: total,
+        status: status || 'pending',
+        total_amount: billTotal,
         my_share: my_share || 0,
         source_text,
         image_urls: image_urls ?? [],
@@ -79,15 +82,15 @@ export async function POST(req: NextRequest) {
 
       if (!billError && bill) {
         // 核心修复：处理 AI 可能漏掉的明细金额，及确保有明细数据用于前端展示标题
-        const finalItems = (Array.isArray(aaItems) && aaItems.length > 0) 
-          ? aaItems 
-          : [{ name: '生活杂项', amount: total }];
+        const finalItems = (Array.isArray(finalAAItems) && finalAAItems.length > 0) 
+          ? finalAAItems 
+          : [{ name: '生活杂项', amount: billTotal }];
 
         const itemRows = finalItems.map(item => ({
           bill_id: bill.id,
           name: item.name || '支出项',
           // 容错逻辑：如果明细没有金额，优先用总额填充（单项时），或补 0（多项时）以避开数据库 NOT NULL 约束
-          amount: (typeof item.amount === 'number') ? item.amount : (finalItems.length === 1 ? (total || 0) : 0),
+          amount: (typeof item.amount === 'number') ? item.amount : (finalItems.length === 1 ? (billTotal || 0) : 0),
           category: item.category ?? null,
         }))
 

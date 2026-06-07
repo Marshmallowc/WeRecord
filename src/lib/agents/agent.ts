@@ -1,5 +1,8 @@
-import * as tools from './tools'
-import { AgentContext } from './tools'
+import { AgentContext, AgentSkillRegistry } from './registry'
+import { ProfileSkill } from './skills/profile'
+import { BillingSkill } from './skills/billing'
+import { ReminderSkill } from './skills/reminder'
+import { AnalyticsSkill } from './skills/analytics'
 
 const SYSTEM_PROMPT_TEMPLATE = (myIdentity: string, myName: string, partnerName: string, todayDate: string) => `你叫 Mason，是一个睿智、理性且充满温度、幽默风趣的情侣理财导师。
 今天是：${todayDate} (星期几请根据日期自行换算，用于处理用户提到“今天、昨天、前天、本周、上周”等时间词)。
@@ -17,103 +20,18 @@ const SYSTEM_PROMPT_TEMPLATE = (myIdentity: string, myName: string, partnerName:
 4. 语言解析：如果用户提到“我”或“我自己”，表示 ${myName}；如果提到“Ta”、“他”、“她”或“${partnerName}”，一律表示伴侣（因为用户输入中经常存在输入法拼音导致的错别字，不管代词性别如何，请始终将其映射为伴侣）。
 
 工具调用说明：
-- 在开始回答用户关于具体账目是否记过、金额多少等问题前，请务必先调用 query_records 工具进行检索。
-- 统计与总数陷阱（极端重要）：调用 query_records 后，请直接读取返回值中的 \`total_count\`（总条数）、\`sum_aa_total\`（账单总计）、\`sum_aa_my_share\`（我的分摊总计）等聚合字段来回答“有多少单”、“一共花了多少钱”等问题。系统默认截断了明细列表（limit保护），**严禁**你去手动遍历和累加 records 数组，那会导致严重的财务算错漏算！
-- 批量结清防漏陷阱：如果用户要求“平账所有的账单”，但 query_records 返回了 \`has_more: true\`，你在调用 settle_bills 时只能处理当前返回的那些 ID。处理完后，你**必须**在最终回复中明确告知用户：“因为单词操作限制，我先为您结清了这 30 笔，还剩几十笔未结清，请再吩咐我一次继续平账。”
+- 在开始回答用户关于具体账目是否记过、金额多少等问题前，请务必先调用查询工具进行检索。
+- 统计与总数陷阱（极端重要）：回答“有多少单”、“一共花了多少钱”、“我付了多少/对方付了多少”、“我多少笔/他多少笔”等统计问题时：
+  - 只要涉及到区分“我付的”还是“对方付的”（如“我多少笔，他多少笔”），**必须分别调用两次 query_financial_data**（一次 payer: 'me'，一次 payer: 'her'），利用返回的 \`total_count\` 或 \`pending_count\` 聚合值来回答。
+  - 如果是普通全部统计，可以调用 get_financial_stats 统计摘要。
+  - 如果是包含特定筛选条件的复杂统计（如“**对方**有多少笔未结清”、“**我**昨天付了多少钱”），**必须调用 query_financial_data 工具**，传入对应的过滤条件（如 payer: 'her', status: 'pending' 等），读取返回的 \`pending_count\`、\`sum_aa_total\` 或 \`total_count\` 聚合字段直接回答。
+  - **严禁**调用 query_records 试图查出明细列表后在内存里进行人工累加或数数！那会导致严重的财务算错漏算！
+- 批量结清防漏陷阱：如果用户要求“平账所有的账单”，但查询返回了 \`has_more: true\`，你在调用 settle_bills 时只能处理当前返回的那些 ID。处理完后，你**必须**在最终回复中明确告知用户：“因为单次操作限制，我先为您结清了这 30 笔，还剩几笔未结清，请再吩咐我一次继续平账。”
 - 如果你要帮用户记账，请使用 add_record 工具。注意：当你调用 add_record 工具时，它只会生成一条“记账草稿”卡片呈现给用户确认，并没有存库。你绝对不能声称“已经记入账本”或“已成功入账”！你应该回复引导用户核对下方的草稿卡片内容，并提示他们点击卡片上的“确认记入账本”按钮来完成保存。
-- 补发图片场景：如果用户刚刚发了账单，现在又发来图片并说“把这个图片加上去”、“漏传图了”等，因为你无法直接修改或向旧草稿添加图片，你必须阅读你们的聊天记录，找出上一笔账务的具体文字描述（例如“昨天吃饭200元平摊”），然后**重新调用 add_record 工具**把那段文字再传一遍。系统底层的上下文会自动将用户最新上传的图片绑定到这次新生成的草稿上。
-- If you need to search relative dates (like 'yesterday', 'day before yesterday'), calculate the YYYY-MM-DD string relative to the current date (${todayDate}) and pass it to query_records.
+- 补发图片场景：如果用户刚刚发了账单，现在又发来图片并说“把这个图片加上去”、“漏传图了”等，因为你无法直接修改或向旧草稿添加图片，你必须阅读你们的聊天记录，找出上一笔账务的具体文字描述（例如“昨天吃饭200元平摊”），然后重新调用 add_record 工具把那段文字再传一遍。系统底层的上下文会自动将用户最新上传的图片绑定到这次新生成的草稿上。
+- If you need to search relative dates (like 'yesterday', 'day before yesterday'), calculate the YYYY-MM-DD string relative to the current date (${todayDate}) and pass it to tools.
 - 如果你要结账平账，请使用 settle_bills 工具。
 - 如果用户要求提醒对方平账，请使用 notify_partner 工具。`
-
-const TOOL_SCHEMAS = [
-  {
-    "type": "function",
-    "function": {
-      "name": "get_couple_profile",
-      "description": "获取当前用户与情侣伙伴的基本身份资料（包括展示名，以及谁是'me'、谁是'her'等信息）。在需要称呼对方或确认个人身份映射时优先调用该工具。"
-    }
-  },
-  {
-    "type": "function",
-    "function": {
-      "name": "query_records",
-      "description": "在账本中精准查找 AA 账单或礼物记录。可基于分类、关键字、时间段或结账状态进行过滤。该工具会返回匹配的详细记录 JSON 列表。",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "query": { "type": "string", "description": "用于模糊匹配账单或礼物标题的关键字（如 '电影', '咖啡'）" },
-          "record_type": { "type": "string", "enum": ["aa", "gift"], "description": "要筛选的记录类型：'aa' (支出) 或 'gift' (礼物)。不传则查全部。" },
-          "start_date": { "type": "string", "description": "查询的起始日期，格式 YYYY-MM-DD（如 '2026-05-01'）" },
-          "end_date": { "type": "string", "description": "查询的结束日期，格式 YYYY-MM-DD" },
-          "status": { "type": "string", "enum": ["pending", "settled"], "description": "仅针对AA账单进行过滤：'pending' (未平账/待结清) 或 'settled' (已平账/已结清)。" },
-          "order": { "type": "string", "enum": ["desc", "asc"], "description": "排序顺序，默认为 'desc' (最新的在前)。若要查询最早、第一笔账单，请传入 'asc' (最旧的在前)。" },
-          "limit": { "type": "integer", "description": "返回的最大记录数，默认为 30。" }
-        }
-      }
-    }
-  },
-  {
-    "type": "function",
-    "function": {
-      "name": "add_record",
-      "description": "生成一条记账草稿以供用户核对确认，并返回草稿卡片（is_draft: true）。该操作并没有直接存入数据库，请引导用户核对下方的草稿卡片信息并点击“确认记入账本”以完成正式入库。",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "text": { "type": "string", "description": "用户原始的自然语言账务记录语句。必须直接传入用户的原始原话（例如“今天东区帮他买饭21元”），严禁你自行修改、润色、重写或翻译，不要擅自添加任何额外字眼（如不要添加“AA分摊”等）。" }
-        },
-        "required": ["text"]
-      }
-    }
-  },
-  {
-    "type": "function",
-    "function": {
-      "name": "settle_bills",
-      "description": "把指定的多个 AA 账单在数据库中标记为已结清（settled）状态。",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "bill_ids": {
-            "type": "array",
-            "items": { "type": "string" },
-            "description": "需要结清的账单 UUID 列表"
-          }
-        },
-        "required": ["bill_ids"]
-      }
-    }
-  },
-  {
-    "type": "function",
-    "function": {
-      "name": "notify_partner",
-      "description": "给情侣伙伴发送一条 Web Push 手机推送提醒。可以用于催促对方平账，或发送重要财务提示。",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "body": { "type": "string", "description": "推送通知的内容文本（例如：'亲爱的，昨天有一笔 45 元的账单待结清哦'，禁止包含 Emoji）" }
-        },
-        "required": ["body"]
-      }
-    }
-  },
-  {
-    "type": "function",
-    "function": {
-      "name": "get_financial_stats",
-      "description": "获取指定时间段内（或所有时间）的情侣账目统计摘要和分类消费占比。包含AA总支出、当前谁欠谁多少钱（结余）、各自送礼总额及各个分类的消费总和。当用户询问“我们这月/这周花了多少”、“当前谁欠谁钱”、“分类支出占比”等宏观统计问题时，必须优先调用此工具，严禁使用query_records查询全部明细来人工累加计算。",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "start_date": { "type": "string", "description": "起始日期，格式 YYYY-MM-DD（如 '2026-05-01'）" },
-          "end_date": { "type": "string", "description": "结束日期，格式 YYYY-MM-DD" }
-        }
-      }
-    }
-  }
-]
 
 export type AgentStep =
   | { type: 'status'; status: 'thinking' | 'calling_tool' | 'tool_complete' | 'responding'; message: string; tool?: string }
@@ -122,9 +40,15 @@ export type AgentStep =
 
 export class AIAgent {
   private context: AgentContext
+  private registry: AgentSkillRegistry
 
   constructor(context: AgentContext) {
     this.context = context
+    this.registry = new AgentSkillRegistry()
+    this.registry.register(ProfileSkill)
+    this.registry.register(BillingSkill)
+    this.registry.register(ReminderSkill)
+    this.registry.register(AnalyticsSkill)
   }
 
   async run(
@@ -160,7 +84,7 @@ export class AIAgent {
         body: JSON.stringify({
           model: 'deepseek-chat',
           messages: messagesToSend,
-          tools: TOOL_SCHEMAS,
+          tools: this.registry.getToolSchemas(),
           tool_choice: 'auto',
           temperature: 0.1,
         }),
@@ -179,7 +103,6 @@ export class AIAgent {
       }
 
       // Add model's intermediate/final message to context
-      // Note: We need to push the tool_calls property if it exists
       const modelMessage: any = {
         role: 'assistant',
         content: message.content || ''
@@ -209,6 +132,7 @@ export class AIAgent {
         const toolMessages: Record<string, { start: string; end: string }> = {
           get_couple_profile: { start: '读取情侣伙伴资料中', end: '资料读取完成' },
           query_records: { start: '检索账目记录中', end: '账目检索完成' },
+          query_financial_data: { start: '进行高级财务分析中', end: '财务数据分析完毕' },
           add_record: { start: '起草记账卡片中', end: '记账草稿已生成' },
           settle_bills: { start: '办理结账手续中', end: '结账手续办理完毕' },
           notify_partner: { start: '向伙伴发送消息提醒中', end: '消息提醒发送成功' },
@@ -217,44 +141,20 @@ export class AIAgent {
         const msg = toolMessages[name] || { start: `运行工具 ${name} 中`, end: `工具 ${name} 运行完成` }
         onStep?.({ type: 'status', status: 'calling_tool', tool: name, message: msg.start })
 
-        let toolResult: any = null
-
-        // Dispatch based on tool name
-        switch (name) {
-          case 'get_couple_profile':
-            toolResult = await tools.get_couple_profile(this.context)
-            break
-          case 'query_records':
-            toolResult = await tools.query_records(this.context, parsedArgs)
-            if (toolResult.success && Array.isArray(toolResult.records)) {
-              collectedRecords = [...collectedRecords, ...toolResult.records]
-            }
-            break
-          case 'add_record':
-            toolResult = await tools.add_record(this.context, parsedArgs)
-            if (toolResult.success && Array.isArray(toolResult.records)) {
-              collectedRecords = [...collectedRecords, ...toolResult.records]
-            }
-            break
-          case 'settle_bills':
-            toolResult = await tools.settle_bills(this.context, parsedArgs)
-            if (toolResult.success && Array.isArray(toolResult.settled_bills)) {
-              // Add settled records so they are refreshed in UI
-              collectedRecords = [...collectedRecords, ...toolResult.settled_bills]
-            }
-            break
-          case 'notify_partner':
-            toolResult = await tools.notify_partner(this.context, parsedArgs)
-            break
-          case 'get_financial_stats':
-            toolResult = await tools.get_financial_stats(this.context, parsedArgs)
-            break
-          default:
-            toolResult = { success: false, error: `Unknown tool name: ${name}` }
-        }
+        const toolResult = await this.registry.executeTool(name, this.context, parsedArgs)
 
         console.log(`[AIAgent] Tool result for ${name}:`, toolResult)
         onStep?.({ type: 'status', status: 'tool_complete', tool: name, message: msg.end })
+
+        if (toolResult.success) {
+          if (name === 'query_records' || name === 'query_financial_data' || name === 'add_record') {
+            if (Array.isArray(toolResult.records)) {
+              collectedRecords = [...collectedRecords, ...toolResult.records]
+            }
+          } else if (name === 'settle_bills' && Array.isArray(toolResult.settled_bills)) {
+            collectedRecords = [...collectedRecords, ...toolResult.settled_bills]
+          }
+        }
 
         // Append tool call result message
         messagesToSend.push({
