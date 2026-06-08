@@ -24,9 +24,9 @@ export async function GET(req: NextRequest) {
   const type = searchParams.get('type') // 'gift' or 'aa'
   const includeInsights = searchParams.get('include_insights') === 'true'
 
-  let giftQuery = supabase.from('gifts').select('id, from_user, to_user, title, amount, description, category, source_text, image_urls, date, created_at')
+  let giftQuery = supabase.from('gifts').select('id, creator_id, from_user, to_user, title, amount, description, category, source_text, image_urls, date, created_at')
     .eq('couple_id', coupleId)
-  let billQuery = supabase.from('aa_bills').select('id, payer, status, total_amount, my_share, source_text, note, image_urls, date, created_at, aa_items(id, name, amount, category)')
+  let billQuery = supabase.from('aa_bills').select('id, creator_id, payer, status, total_amount, my_share, source_text, note, image_urls, date, created_at, aa_items(id, name, amount, category)')
     .eq('couple_id', coupleId)
   let insightQuery = supabase.from('ai_insights').select('id, content, insight_type, date, created_at')
     .eq('couple_id', coupleId)
