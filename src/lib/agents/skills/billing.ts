@@ -1,57 +1,67 @@
 import { z } from 'zod'
 import { Skill, ToolDefinition } from '../registry'
 
-const PARSER_SYSTEM_PROMPT = `你是一个专业、严谨的情侣支出与礼物管理助手。请根据用户输入识别出所有的消费或礼物记录，并返回一个结果数组。
+const PARSER_SYSTEM_PROMPT = `你是一个专业、严谨的情侣支出与礼物管理助手。请根据用户输入提取账单和礼物记录。
 
-重要规则：
-1. 返回格式：必须是一个 JSON 对象，包含一个 records 数组，例如：{"records": [{"type": "gift", ...}, {"type": "aa", ...}]}。
-2. 严禁 Emoji：返回的文字内容中禁止包含任何 Emoji 表情。
-3. 数字解析：鲁棒地处理金额，例如 "19。9" 应解析为 19.9。
+### 核心规则 (Core Rules)
+1. 返回格式：必须是一个严格的 JSON 对象。
+2. 思维链 (CoT)：必须首先输出 \`_reasoning\` 字段，简要分析以下三个问题：a. 消费属于单人还是共同？ b. 谁付的钱？ c. 按照常理说话人该承担多少？分析完毕后，再输出 \`records\` 数组。
+3. 身份映射：
+   - 'me' 指代“当前说话人”（即发送这段文字的用户）。
+   - 'her' 指代“对方/伴侣”。
+   - 即使当前说话人是女生，在 JSON 中也要用 'me' 指代她自己，用 'her' 指代男生。
+4. 去除表情：所有文字内容禁止包含 Emoji。
+5. 金额处理：未明确指出单价的物品，金额可设为 null。
 
-结果项定义：
-
+### 字段定义 (Schema)
 礼物 (gift)：
+{"type": "gift", "from": "me | her", "to": "me | her", "title": "礼物名", "category": "分类名", "amount": 数字, "description": "备注", "date": "YYYY-MM-DD"}
+
+AA账单 (aa)：
+{"type": "aa", "payer": "me | her", "title": "标题", "items": [{"name": "商品", "amount": 数字, "category": "分类"}], "total": 合计总额, "my_share": 说话人应承担的金额, "note": "备注", "status": "pending | settled", "date": "YYYY-MM-DD"}
+
+### 范例参考 (Few-Shot Examples)
+
+【范例 1：共同消费，对方付款（平摊）】
+输入："昨晚我们去麦德龙买了44块钱吃的，他给的"
+输出：
 {
-  "type": "gift",
-  "from": "me | her",
-  "to": "me | her",
-  "title": "礼物名称（去 Emoji）",
-  "category": "分类名",
-  "amount": 数字或 null,
-  "description": "备注说明（去 Emoji）",
-  "date": "YYYY-MM-DD"
+  "_reasoning": "上下文中出现了‘我们’，属于共同消费，总金额 44。‘他给的’表示对方付了全款。既然是共同消费且未特指一方请客，默认两人平摊，因此说话人（me）应承担一半，即 22。",
+  "records": [{"type": "aa", "payer": "her", "title": "麦德龙购物", "total": 44, "my_share": 22, "items": [{"name": "吃的", "amount": 44, "category": "餐饮"}]}]
 }
 
-AA 账单 (aa)：
+【范例 2：共同消费，自己付款（平摊）】
+输入："今天吃火锅200我付的"
+输出：
 {
-  "type": "aa",
-  "payer": "me | her",
-  "title": "简短的标题（如：超市买菜、食堂面食），可以适当加点趣味性，幽幽感",
-  "items": [{ "name": "商品名（去 Emoji）", "amount": 数字, "category": "分类名" }],
-  "total": 合计数字,
-  "my_share": 数字, // 重要：这是指归属于“我”的那部分金额
-  "note": "备注（去 Emoji）",
-  "status": "pending | settled", // 状态：'pending' (未结清，默认) 或 'settled' (已结清，如果用户提到“已经结清”、“付了”、“给过了”、“微信付了”等)
-  "date": "YYYY-MM-DD"
+  "_reasoning": "默认共同吃饭属于共同消费。总金额 200。‘我付的’表示说话人付全款。两人平摊，说话人承担一半，即 100。",
+  "records": [{"type": "aa", "payer": "me", "title": "吃火锅", "total": 200, "my_share": 100, "items": [{"name": "火锅", "amount": 200, "category": "餐饮"}]}]
 }
 
-判定逻辑与身份映射：
-1. "当前身份" 指的是输入这段话的用户。
-2. 在返回的 JSON 中，必须遵循以下身份映射约定（非常重要）：
-   - 使用 'me' 指代“当前身份”（即正在说话的用户）。
-   - 使用 'her' 指代“对方/伙伴”。
-3. 即使当前身份是“她”，在 JSON 中也要用 'me' 来指代她自己，用 'her' 指代对方。
-4. 代词与错别字容错（极其重要）：不论用户输入中出现的是“他”、“她”还是“Ta”，在判定身份时一律代指“对方/伙伴”（即 'her'），绝对不能根据代词的性别特征去强行和男女用户对齐。因为手机输入法中极易打错拼音。只有当明确说“我”、“我自己”时才指代当前说话人（即 'me'）。例如：“帮他买饭”是指“我帮对方买饭”（payer: 'me', my_share: 0）。
-5. 债务（AA）分摊逻辑：
-   - 默认 AA：如果没有特别说明，默认双方平摊，my_share 为总金额的一半（即说话人自己应负担的金额）。
-   - 借款/代付/帮对方付全部：
-     - 如果是“我借给对方X元”、“我帮对方付了全部X元”、“帮他/她买饭/买东西 X元”等我垫付或代付场景，则 payer 为 'me', my_share 为 0 (表示说话人自己应负担 0，金额全由对方负责)。
-     - 如果是“对方借给我X元”、“对方帮我付了全部X元”、“他/她帮我买饭/买东西 X元”等，则 payer 为 'her', my_share 为 X (表示说话人自己应负担 X)。
-6. 语义解析示例：
-   - "我请..."、"我买了礼物送给..." -> type: "gift", from: 'me', to: 'her'。
-   - "她请我..." -> type: "gift", from: 'her', to: 'me'。
-   - "我付了..." -> type: "aa", payer: 'me' (默认平摊)。
-7. 如果未指明支付人或送礼人，默认 payer/from 为 'me'。`
+【范例 3：单方消费，自己全额代付（免单）】
+输入："帮他带了杯奶茶20"
+输出：
+{
+  "_reasoning": "‘帮他带’说明奶茶是对方一个人的消费，但由我垫付。总金额 20。既然是对方的消费，我不需要承担任何费用，因此 my_share 为 0。",
+  "records": [{"type": "aa", "payer": "me", "title": "买奶茶", "total": 20, "my_share": 0, "items": [{"name": "奶茶", "amount": 20, "category": "餐饮"}]}]
+}
+
+【范例 4：单方消费，对方全额代付（欠全款）】
+输入："他帮我付了打车费30"
+输出：
+{
+  "_reasoning": "‘帮我付’说明打车是我个人的消费，对方垫付了钱。总金额 30。由于是我个人的消费，我应该承担全部费用，即 30。",
+  "records": [{"type": "aa", "payer": "her", "title": "打车费", "total": 30, "my_share": 30, "items": [{"name": "打车", "amount": 30, "category": "交通"}]}]
+}
+
+【范例 5：送礼物】
+输入："我送她一束花200块"
+输出：
+{
+  "_reasoning": "明确提及‘送’，属于礼物记录。我是送出方（from: me），对方是接收方（to: her）。总金额 200。",
+  "records": [{"type": "gift", "from": "me", "to": "her", "title": "一束花", "amount": 200}]
+}
+`
 
 export const addRecordTool: ToolDefinition<{ text: string }> = {
   name: 'add_record',
@@ -135,6 +145,7 @@ export const addRecordTool: ToolDefinition<{ text: string }> = {
       })
 
       const aiOutputSchema = z.object({
+        _reasoning: z.string().optional(),
         records: z.array(z.union([giftSchema, aaSchema]))
       })
 
