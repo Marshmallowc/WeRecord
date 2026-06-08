@@ -14,7 +14,6 @@ interface RecordItem {
   created_at: string
   date: string
   source_text: string
-  creator_id?: string
   content?: string // For AI insights
   insight_type?: string
   category?: string | null
@@ -30,7 +29,7 @@ interface RecordItem {
 }
 
 export default function MomentsPage() {
-  const { identity, partnerName, avatarUrl, partnerAvatarUrl, pendingUploads } = useIdentity()
+  const { identity, partnerName, avatarUrl, partnerAvatarUrl, pendingUploads, user } = useIdentity()
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null)
 
   const { data: recordsData, error, isLoading, isValidating, mutate } = useSWR(
@@ -85,13 +84,13 @@ export default function MomentsPage() {
       processedIds.add(r.id)
 
       // Look for siblings within 10 seconds that share the same source_text and author
-      const rAuthor = r.creator_id
+      const rAuthor = r.record_type === 'gift' ? r.from_user : r.payer
       
       for (let j = i + 1; j < sorted.length; j++) {
         const s = sorted[j]
         if (processedIds.has(s.id) || s.record_type === 'insight') continue
 
-        const sAuthor = s.creator_id
+        const sAuthor = s.record_type === 'gift' ? s.from_user : s.payer
         const timeDiff = Math.abs(new Date(r.created_at).getTime() - new Date(s.created_at).getTime())
 
         if (s.source_text === r.source_text && sAuthor === rAuthor && timeDiff < 10000) {
@@ -139,6 +138,7 @@ export default function MomentsPage() {
               key={moment.main.id}
               moment={moment}
               identity={identity!}
+              userId={user?.id}
               partnerName={partnerName}
               avatarUrl={avatarUrl}
               partnerAvatarUrl={partnerAvatarUrl}
