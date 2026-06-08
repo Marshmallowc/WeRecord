@@ -69,11 +69,24 @@ export default function MomentCard({
     )
   }
 
-  // Determine author of the post based on lead record
-  const postAuthorId = main.record_type === 'gift' ? main.from_user : main.payer
+  // Determine author of the post based on who recorded it
+  const postAuthorId = main.creator_id || identity
   const isMe = postAuthorId === identity
   const currentAvatarUrl = isMe ? avatarUrl : partnerAvatarUrl
   const currentDisplayName = isMe ? '我' : partnerName
+
+  // Generate structured summary
+  let structuredSummary = ''
+  if (main.record_type === 'gift') {
+    const isSenderMe = main.from_user === identity
+    structuredSummary = isSenderMe 
+      ? `送出了一份礼物：[${main.title || '礼物'}]`
+      : `收到了一份礼物：[${main.title || '礼物'}]`
+  } else if (main.record_type === 'aa') {
+    const isPayerMe = main.payer === identity
+    const payerName = isPayerMe ? '我' : partnerName
+    structuredSummary = `记录了一笔支出：[${main.title || '消费'}] ¥${main.total_amount?.toFixed(2) || '0.00'}，由${payerName}付款`
+  }
 
   // Union of all unique images in the group
   const allImages = Array.from(new Set(items.flatMap((i: any) => i.image_urls || [])))
@@ -111,8 +124,28 @@ export default function MomentCard({
           {currentDisplayName}
         </div>
 
+        {/* Structured Summary */}
+        <div style={{ fontSize: '15px', color: 'var(--text-primary)', fontWeight: '500', marginBottom: '8px' }}>
+          {structuredSummary}
+        </div>
+
+        {/* Original Voice Text */}
         {main.source_text && (
-          <div style={{ fontSize: '15px', color: 'var(--text-primary)', lineHeight: '1.5', whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: '10px' }}>
+          <div style={{ 
+            fontSize: '13px', 
+            color: 'var(--text-muted)', 
+            lineHeight: '1.5', 
+            whiteSpace: 'pre-wrap', 
+            wordBreak: 'break-word', 
+            marginBottom: '10px',
+            borderLeft: '3px solid var(--border)',
+            padding: '8px 12px',
+            background: 'var(--bg-secondary)',
+            borderRadius: '4px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px', fontSize: '12px', fontWeight: '600' }}>
+              <span role="img" aria-label="mic">🎤</span> 语音原话
+            </div>
             {main.source_text}
           </div>
         )}
