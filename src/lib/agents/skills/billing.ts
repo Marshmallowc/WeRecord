@@ -108,7 +108,7 @@ export const addRecordTool: ToolDefinition<{ text: string }> = {
         category: z.string().optional().nullable(),
         amount: z.number().nullable().optional(),
         total: z.number().nullable().optional(), // Coercion field
-        items: z.array(z.object({ amount: z.number().optional() })).optional(), // Coercion field
+        items: z.array(z.object({ amount: z.number().nullable().optional() })).optional(), // Coercion field
         description: z.string().optional().nullable(),
         date: z.string().optional().nullable()
       }).transform(data => ({
@@ -118,7 +118,7 @@ export const addRecordTool: ToolDefinition<{ text: string }> = {
 
       const aaItemSchema = z.object({
         name: z.string().optional().default('支出项'),
-        amount: z.number().optional(),
+        amount: z.number().nullable().optional(),
         category: z.string().optional().nullable()
       })
 
@@ -127,8 +127,8 @@ export const addRecordTool: ToolDefinition<{ text: string }> = {
         payer: z.enum(['me', 'her']).optional().default('me'),
         title: z.string().optional().default('支出记录'),
         items: z.array(aaItemSchema).optional(),
-        total: z.number().optional().default(0),
-        my_share: z.number().optional(),
+        total: z.number().nullable().optional().default(0),
+        my_share: z.number().nullable().optional(),
         note: z.string().optional().nullable(),
         status: z.enum(['pending', 'settled']).optional().default('pending'),
         date: z.string().optional().nullable()
@@ -190,7 +190,9 @@ export const addRecordTool: ToolDefinition<{ text: string }> = {
         } else if (record.type === 'aa') {
           const { payer, items: aaItems, total, my_share, note, date } = record
           const dbPayer = resolveIdentity(payer)
-          const dbMyShare = identity === 'her' ? (total - (my_share || 0)) : (my_share || 0)
+          const safeTotal = total ?? 0
+          const safeMyShare = my_share ?? 0
+          const dbMyShare = identity === 'her' ? (safeTotal - safeMyShare) : safeMyShare
 
           draftDisplayPayload = {
             id: tempId,
@@ -198,7 +200,7 @@ export const addRecordTool: ToolDefinition<{ text: string }> = {
             is_draft: true,
             payer: dbPayer,
             status: record.status,
-            total_amount: total,
+            total_amount: safeTotal,
             my_share: dbMyShare,
             source_text: args.text,
             image_urls: imageUrls,
