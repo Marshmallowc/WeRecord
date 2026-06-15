@@ -46,10 +46,17 @@ export async function POST(req: NextRequest) {
     }
 
     // Filter messages to match DeepSeek expected structure
-    const cleanedMessages = messages.map((m: any) => ({
-      role: m.role || (m.sender === 'user' ? 'user' : 'assistant'),
-      content: m.text || m.content || ''
-    }))
+    const cleanedMessages = messages.map((m: any) => {
+      const role = m.role || (m.sender === 'user' ? 'user' : 'assistant')
+      let content = m.text || m.content || ''
+      if (role === 'assistant' && m.records && m.records.length > 0) {
+        content += `\n\n[已生成的草稿数据: ${JSON.stringify(m.records)}]`
+      }
+      return {
+        role,
+        content
+      }
+    })
 
     // 5. Build Agent execution context
     const context = {

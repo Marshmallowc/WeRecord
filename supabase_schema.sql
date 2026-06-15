@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS aa_bills (
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'settled')),
   total_amount DECIMAL(10, 2) NOT NULL,
   my_share DECIMAL(10, 2) NOT NULL,
+  bill_type TEXT NOT NULL DEFAULT 'aa' CHECK (bill_type IN ('aa', 'borrow')),
   source_text TEXT DEFAULT '',
   note TEXT,
   date DATE NOT NULL DEFAULT CURRENT_DATE,
@@ -139,7 +140,7 @@ CREATE TABLE IF NOT EXISTS aa_drafts (
   id TEXT PRIMARY KEY,
   couple_id UUID REFERENCES couples(id) ON DELETE CASCADE,
   creator_id UUID REFERENCES auth.users(id),
-  record_type TEXT NOT NULL CHECK (record_type IN ('gift', 'aa')),
+  record_type TEXT NOT NULL CHECK (record_type IN ('gift', 'aa', 'borrow')),
   payload JSONB NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );

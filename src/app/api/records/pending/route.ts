@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   // Fetch all pending AA bills for the couple
   const { data: bills, error } = await supabase
     .from('aa_bills')
-    .select('id, payer, status, total_amount, my_share, source_text, note, image_urls, date, created_at, aa_items(id, name, amount, category)')
+    .select('id, payer, status, total_amount, my_share, bill_type, source_text, note, image_urls, date, created_at, aa_items(id, name, amount, category)')
     .eq('couple_id', coupleId)
     .eq('status', 'pending')
     .order('date', { ascending: false })
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  const billItems = (bills ?? []).map((b: any) => ({ ...b, record_type: 'aa' }))
+  const billItems = (bills ?? []).map((b: any) => ({ ...b, record_type: b.bill_type || 'aa' }))
 
   return NextResponse.json({ data: billItems })
 }

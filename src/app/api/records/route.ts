@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 
   let giftQuery = supabase.from('gifts').select('id, creator_id, from_user, to_user, title, amount, description, category, source_text, image_urls, date, created_at')
     .eq('couple_id', coupleId)
-  let billQuery = supabase.from('aa_bills').select('id, creator_id, payer, status, total_amount, my_share, source_text, note, image_urls, date, created_at, aa_items(id, name, amount, category)')
+  let billQuery = supabase.from('aa_bills').select('id, creator_id, payer, status, total_amount, my_share, bill_type, source_text, note, image_urls, date, created_at, aa_items(id, name, amount, category)')
     .eq('couple_id', coupleId)
   let insightQuery = supabase.from('ai_insights').select('id, content, insight_type, date, created_at')
     .eq('couple_id', coupleId)
@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
   const insightsRes = shouldIncludeInsights ? results[2] as any : { data: [] }
 
   const giftItems = (giftsRes.data ?? []).map((g: any) => ({ ...g, record_type: 'gift' }))
-  let billItems = (billsRes.data ?? []).map((b: any) => ({ ...b, record_type: 'aa' }))
+  let billItems = (billsRes.data ?? []).map((b: any) => ({ ...b, record_type: b.bill_type || 'aa' }))
   const insightItems = (insightsRes.data ?? []).map((i: any) => ({ ...i, record_type: 'insight' }))
 
   if (category) {

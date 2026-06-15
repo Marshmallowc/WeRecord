@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
         date: date ?? new Date().toISOString().split('T')[0],
       }]).select().single()
       if (!error) savedResults.push({ data, type: 'gift' })
-    } else if (type === 'aa') {
+    } else if (type === 'aa' || type === 'borrow') {
       const { payer, items: aaItems, aa_items, total, total_amount, my_share, note, date, image_urls, status } = result
       const finalAAItems = aaItems || aa_items
       const categories = Array.from(new Set(((finalAAItems || []) as any[]).map(i => i.category).filter(Boolean)))
@@ -66,13 +66,19 @@ export async function POST(req: NextRequest) {
 
       const billTotal = total ?? total_amount
 
+      let finalMyShare = my_share || 0;
+      if (type === 'borrow' && my_share === undefined) {
+        finalMyShare = (payer === 'me') ? 0 : billTotal;
+      }
+
       const { data: bill, error: billError } = await supabase.from('aa_bills').insert([{
         couple_id: coupleId,
         creator_id: user.id,
         payer: payer || 'me',
         status: status || 'pending',
         total_amount: billTotal,
-        my_share: my_share || 0,
+        my_share: finalMyShare,
+        bill_type: type,
         source_text,
         image_urls: image_urls ?? [],
         // 核心优化：将 AI 总结的标题存入 note 头部，方便 SmartTitle 组件解析
@@ -100,7 +106,7 @@ export async function POST(req: NextRequest) {
           console.error('[Save API] aa_items 插入失败:', itemsError)
         }
         
-        savedResults.push({ data: bill, type: 'aa' })
+        savedResults.push({ data: bill, type })
       } else if (billError) {
         console.error('[Save API] aa_bills 插入失败:', billError)
       }

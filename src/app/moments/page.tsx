@@ -83,13 +83,17 @@ export default function MomentsPage() {
       }
       processedIds.add(r.id)
 
+      // Look for siblings within 10 seconds that share the same source_text and author
+      const rAuthor = r.record_type === 'gift' ? r.from_user : r.payer
+      
       for (let j = i + 1; j < sorted.length; j++) {
         const s = sorted[j]
         if (processedIds.has(s.id) || s.record_type === 'insight') continue
 
+        const sAuthor = s.record_type === 'gift' ? s.from_user : s.payer
         const timeDiff = Math.abs(new Date(r.created_at).getTime() - new Date(s.created_at).getTime())
 
-        if (r.source_text && s.source_text === r.source_text && timeDiff < 10000) {
+        if (s.source_text === r.source_text && sAuthor === rAuthor && timeDiff < 10000) {
           group.items.push(s)
           processedIds.add(s.id)
         }
