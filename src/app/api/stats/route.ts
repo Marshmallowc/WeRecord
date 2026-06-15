@@ -19,11 +19,11 @@ export async function GET() {
 
   const [giftsRes, billsRes] = await Promise.all([
     supabase.from('gifts')
-      .select('from_user, amount, category, date, created_at')
+      .select('id, from_user, title, description, amount, category, image_urls, date, created_at')
       .eq('couple_id', coupleId)
       .order('date', { ascending: false }),
     supabase.from('aa_bills')
-      .select('payer, status, my_share, total_amount, date, created_at, aa_items(amount, category)')
+      .select('payer, status, my_share, total_amount, date, created_at, aa_items(name, amount, category)')
       .eq('couple_id', coupleId)
       .order('date', { ascending: false }),
   ])
@@ -36,6 +36,7 @@ export async function GET() {
   let totalByHer = 0
   const giftCategories: Record<string, number> = {}
   const aaCategories: Record<string, number> = {}
+  const merchantStats: Record<string, { count: number, totalAmount: number }> = {}
 
   // Time-based stats
   const monthlyTrends: Record<string, number> = {} // "2024-03": amount
@@ -117,11 +118,18 @@ export async function GET() {
       settledCount++
     }
 
-    const billTotal = Number(b.total_amount) || 0;
     (b.aa_items || []).forEach((item: any) => {
       const amt = Number(item.amount || 0)
       if (item.category) {
         aaCategories[item.category] = (aaCategories[item.category] || 0) + amt
+      }
+      const name = item.name?.trim()
+      if (name) {
+        if (!merchantStats[name]) {
+          merchantStats[name] = { count: 0, totalAmount: 0 }
+        }
+        merchantStats[name].count++
+        merchantStats[name].totalAmount += amt
       }
     })
     processEntry(b, false)
@@ -143,18 +151,40 @@ export async function GET() {
       return obj
     }, {})
 
+  const recentGifts = gifts.slice(0, 10).map(g => ({
+    id: g.id,
+    title: g.title,
+    description: g.description,
+    amount: Number(g.amount || 0),
+    category: g.category,
+    image_urls: g.image_urls,
+    date: g.date,
+    from_user: g.from_user
+  }))
+
+  const topMerchants = Object.entries(merchantStats)
+    .map(([name, stat]) => ({
+      name,
+      count: stat.count,
+      totalAmount: stat.totalAmount
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8)
+
   return NextResponse.json({
     gifts: {
       totalByMe,
       totalByHer,
       categories: giftCategories,
       count: gifts.length,
+      recentGifts,
     },
     aa: {
       pendingCount,
       settledCount,
       categories: aaCategories,
       pendingBalance,
+      topMerchants,
     },
     analytics: {
       monthlyTrends: sortedTrends,
