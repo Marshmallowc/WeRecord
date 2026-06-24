@@ -28,10 +28,21 @@ CREATE TABLE IF NOT EXISTS categories (
   UNIQUE(couple_id, name)
 );
 
+-- 3.5. 场景/事件表 (Event Ledger)
+CREATE TABLE IF NOT EXISTS events (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  couple_id UUID REFERENCES couples(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  cover_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(couple_id, title)
+);
+
 -- 4. 礼物记录表
 CREATE TABLE IF NOT EXISTS gifts (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   couple_id UUID REFERENCES couples(id) ON DELETE CASCADE,
+  event_id UUID REFERENCES events(id) ON DELETE SET NULL,
   creator_id UUID REFERENCES auth.users(id),
   from_user TEXT NOT NULL CHECK (from_user IN ('me', 'her')),
   to_user TEXT NOT NULL CHECK (to_user IN ('me', 'her')),
@@ -49,6 +60,7 @@ CREATE TABLE IF NOT EXISTS gifts (
 CREATE TABLE IF NOT EXISTS aa_bills (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   couple_id UUID REFERENCES couples(id) ON DELETE CASCADE,
+  event_id UUID REFERENCES events(id) ON DELETE SET NULL,
   creator_id UUID REFERENCES auth.users(id),
   payer TEXT NOT NULL CHECK (payer IN ('me', 'her')),
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'settled')),
@@ -81,6 +93,7 @@ $$ LANGUAGE sql STABLE SECURITY DEFINER;
 ALTER TABLE couples ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gifts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE aa_bills ENABLE ROW LEVEL SECURITY;
 ALTER TABLE aa_items ENABLE ROW LEVEL SECURITY;
@@ -97,6 +110,9 @@ CREATE POLICY "view_group_profiles" ON profiles FOR SELECT USING (couple_id = ge
 -- Categories: 全局默认或组内可见
 CREATE POLICY "view_categories" ON categories FOR SELECT USING (couple_id IS NULL OR couple_id = get_my_couple_id());
 CREATE POLICY "manage_group_categories" ON categories FOR ALL USING (couple_id = get_my_couple_id());
+
+-- Events: 组内可见，组内管理
+CREATE POLICY "manage_group_events" ON events FOR ALL USING (couple_id = get_my_couple_id());
 
 -- Gifts: 组内操作
 CREATE POLICY "manage_group_gifts" ON gifts FOR ALL USING (couple_id = get_my_couple_id());
@@ -147,3 +163,11 @@ CREATE TABLE IF NOT EXISTS aa_drafts (
 
 ALTER TABLE aa_drafts ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "manage_group_drafts" ON aa_drafts FOR ALL USING (couple_id = get_my_couple_id());
+
+-- 13. Storage Bucket: event_covers (新增存储桶)
+INSERT INTO storage.buckets (id, name, public) VALUES ('event_covers', 'event_covers', true) ON CONFLICT DO NOTHING;
+
+CREATE POLICY "public_view_event_covers" ON storage.objects FOR SELECT USING (bucket_id = 'event_covers');
+CREATE POLICY "auth_upload_event_covers" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'event_covers');
+CREATE POLICY "auth_update_event_covers" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'event_covers');
+CREATE POLICY "auth_delete_event_covers" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'event_covers');

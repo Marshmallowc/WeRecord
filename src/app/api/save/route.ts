@@ -30,6 +30,27 @@ export async function POST(req: NextRequest) {
     const { type, result, source_text } = entry
     if (!type || !result) continue
 
+    let event_id: string | null = null;
+    if (result.event_title) {
+      const { data: existingEvent } = await supabase
+        .from('events')
+        .select('id')
+        .eq('couple_id', coupleId)
+        .eq('title', result.event_title)
+        .single();
+      
+      if (existingEvent) {
+        event_id = existingEvent.id;
+      } else {
+        const { data: newEvent } = await supabase
+          .from('events')
+          .insert({ couple_id: coupleId, title: result.event_title })
+          .select('id')
+          .single();
+        if (newEvent) event_id = newEvent.id;
+      }
+    }
+
     if (type === 'gift') {
       const { from, to, from_user, to_user, title, amount, description, date, category, image_urls } = result
       if (category) {
@@ -40,6 +61,7 @@ export async function POST(req: NextRequest) {
       }
       const { data, error } = await supabase.from('gifts').insert([{
         couple_id: coupleId,
+        event_id,
         creator_id: user.id,
         from_user: from || from_user || 'me',
         to_user: to || to_user || 'her',
@@ -73,6 +95,7 @@ export async function POST(req: NextRequest) {
 
       const { data: bill, error: billError } = await supabase.from('aa_bills').insert([{
         couple_id: coupleId,
+        event_id,
         creator_id: user.id,
         payer: payer || 'me',
         status: status || 'pending',

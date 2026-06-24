@@ -52,9 +52,10 @@ export const addRecordTool: ToolDefinition<{
   description?: string | null;
   date?: string | null;
   source_text: string;
+  event_title?: string;
 }> = {
   name: 'add_record',
-  description: '生成一条记账草稿以供用户核对确认，并返回草稿卡片（is_draft: true）。该操作并没有直接存入数据库，请引导用户核对草稿并一键确认。如果是礼物填写 from/to，如果是账单填写 payer/split_type。',
+  description: '生成一条记账草稿以供用户核对确认，并返回草稿卡片（is_draft: true）。该操作并没有直接存入数据库，请引导用户核对草稿并一键确认。如果是礼物填写 from/to，如果是账单填写 payer/split_type。如果用户记录的是一组属于同一场景的开销（如“威海游”、“装修”），请提炼一个简短的 event_title，并确保该组所有账单都填入相同的 event_title。如果只是零散的日常开销，请留空。',
   parameters: {
     type: 'object',
     properties: {
@@ -69,7 +70,8 @@ export const addRecordTool: ToolDefinition<{
       category: { type: 'string', description: '分类，如餐饮、交通等' },
       description: { type: 'string', description: '备注信息' },
       date: { type: 'string', description: '日期 YYYY-MM-DD' },
-      source_text: { type: 'string', description: '用户原始的自然语言语句，便于后续关联' }
+      source_text: { type: 'string', description: '用户原始的自然语言语句，便于后续关联' },
+      event_title: { type: 'string', description: '场景事件名称（如“威海游”、“五一旅游”、“婚房装修”）。如果只是日常零散开销，请绝对不要填写此字段，留空即可！' }
     },
     required: ['type', 'title', 'source_text']
   },
@@ -103,6 +105,7 @@ export const addRecordTool: ToolDefinition<{
           description: args.description || null,
           category: args.category || null,
           source_text: args.source_text,
+          event_title: args.event_title || null,
           image_urls: imageUrls,
           date: args.date || new Date().toISOString().split('T')[0],
         }
@@ -134,6 +137,7 @@ export const addRecordTool: ToolDefinition<{
           total_amount: safeTotal,
           my_share: dbMyShare,
           source_text: args.source_text,
+          event_title: args.event_title || null,
           image_urls: imageUrls,
           note: args.description || null,
           title: args.title || '支出记录',
