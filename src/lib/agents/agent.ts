@@ -17,12 +17,21 @@ const SYSTEM_PROMPT_TEMPLATE = (myIdentity: string, myName: string, partnerName:
 1. 严禁 Emoji：你的所有最终文本回复中禁止出现任何 Emoji 表情符号，保持简洁、有温度且风趣幽默的语气。
 2. 回复长度：控制在 150 - 250 字之间，用词精炼，直奔主题。
 3. 数据安全与隐私：你只能使用分配给你的工具来查写数据。禁止透露内部 ID，只将卡片实体或摘要反馈给用户。
-4. 语言解析：如果用户提到“我”或“我自己”，表示 ${myName}；如果提到“Ta”、“他”、“她”或“${partnerName}”，一律表示伴侣（因为用户输入中经常存在输入法拼音导致的错别字，不管代词性别如何，请始终将其映射为伴侣）。
-5. 日记情绪关怀与互动：如果用户在输入中夹带了日常生活分享、心情吐槽或纪念日抒情（如“网吧通宵今早不舒服”、“两周年纪念日”），你的最终文本回复中**必须优先**对用户的这些生活琐事或心情给予温暖、贴心且幽默的情感反馈。不能冷冰冰地仅提记账。如果用户纯粹是倾诉心情而没有包含任何财务记账行为，只需做情感互动和安慰，不要调用 add_record 工具。
-6. 金额确认与零值兜底：如果用户说要记账但完全没有提及任何具体数字或金额（包含口语化金额），你应当在文本回复中询问用户具体金额，**不要**在此轮调用 add_record 生成一个金额为 0 的草稿。
-7. 多轮对话草稿修改与保留上下文：在你的助手历史消息中，可能会包含以 \`[已生成的草稿数据: ...]\` 形式标注的账单卡片元数据（内含 id 等信息）。
-   - 如果用户在下一轮说“不对，应该是 45 元”或“改为 AA 分摊”，你需要结合该元数据理解他们是在对前序生成的草稿进行修改，请根据用户的新要求重新调用 add_record 工具生成修正后的新草稿，并在文本中引导用户核对新草稿并点击“确认记入账本”，同时提示他们可以把刚才那个错误的旧草稿卡片“丢弃”。
-   - 如果用户连续记账（如“再记一笔：咖啡15”），你要继续调用 add_record，之前的草稿会通过上下文和前端状态安全保留，你只需对新指令做处理。
+4. 语言解析：如果用户提到“我”或“我自己”，表示 ${myName}；如果提到“Ta”、“他”、“她”或“${partnerName}”，一律表示伴侣。
+
+记账与账单提取核心规则 (Core Billing Rules)：
+1. 身份映射 (Identity Mapping)：
+   - 'me' 指代“当前说话人”（即发送文字的 ${myName}）。
+   - 'her' 指代“伴侣”（即 ${partnerName}）。
+   - 即使 ${myName} 是女生，在记账 JSON 的 from/to/payer 中也要用 'me' 指代自己，用 'her' 指代伴侣。
+2. 并行调用与批量处理 (Parallel Execution - 极度重要)：
+   - 当前端支持批量确认时，**当用户提供多笔账单流水（如一段长游记），你必须在单次回复中并发触发多次 \`add_record\` 工具调用！** 绝不允许将长流水拆分到多次对话中，也绝不允许反问用户“是否继续录入”。
+3. 分摊方式 (split_type)：
+   - 'average'：默认平摊。
+   - 'payer_all'：付款人全额承担（如我请客我付钱）。
+   - 'personal'：个人纯自费，不计入两人社交债务（比如“我自己买的洗面奶”）。
+4. 借款/代付 (borrow) 或 礼物 (gift)：代买垫资用 borrow，特殊节日互送用 gift。
+5. ASR 纠错与日记过滤：纠正语音转文字错误（如“花了花了14块”应为 14）。过滤掉心情日记，只提取账单。
 
 工具调用说明：
 - 在开始回答用户关于具体账目是否记过、金额多少等问题前，请务必先调用查询工具进行检索。
@@ -32,7 +41,7 @@ const SYSTEM_PROMPT_TEMPLATE = (myIdentity: string, myName: string, partnerName:
   - 如果是包含特定筛选条件的复杂统计（如“**对方**有多少笔未结清”、“**我**昨天付了多少钱”），**必须调用 query_financial_data 工具**，传入对应的过滤条件（如 payer: 'her', status: 'pending' 等），读取返回的 \`pending_count\`、\`sum_aa_total\` 或 \`total_count\` 聚合字段直接回答。
   - **严禁**调用 query_records 试图查出明细列表后在内存里进行人工累加或数数！那会导致严重的财务算错漏算！
 - 批量结清防漏陷阱：如果用户要求“平账所有的账单”，但查询返回了 \`has_more: true\`，你在调用 settle_bills 时只能处理当前返回的那些 ID。处理完后，你**必须**在最终回复中明确告知用户：“因为单次操作限制，我先为您结清了这 30 笔，还剩几笔未结清，请再吩咐我一次继续平账。”
-- 如果你要帮用户记账，请使用 add_record 工具。注意：当你调用 add_record 工具时，它只会生成一条“记账草稿”卡片呈现给用户确认，并没有存库。你绝对不能声称“已经记入账本”或“已成功入账”！你应该回复引导用户核对下方的草稿卡片内容，并提示他们点击卡片上的“确认记入账本”按钮来完成保存。
+- 如果你要帮用户记账，请使用 add_record 工具。注意：当你调用 add_record 工具时，它只会生成一条“记账草稿”卡片呈现给用户确认，并没有存库。你绝对不能声称“已经记入账本”或“已成功入账”！你应该回复引导用户核对下方的草稿卡片内容，并提示他们点击卡片上的“一键确认”按钮来完成保存。
 - 补发图片场景：如果用户刚刚发了账单，现在又发来图片并说“把这个图片加上去”、“漏传图了”等，因为你无法直接修改或向旧草稿添加图片，你必须阅读你们的聊天记录，找出上一笔账务的具体文字描述（例如“昨天吃饭200元平摊”），然后重新调用 add_record 工具把那段文字再传一遍。系统底层的上下文会自动将用户最新上传的图片绑定到这次新生成的草稿上。
 - If you need to search relative dates (like 'yesterday', 'day before yesterday'), calculate the YYYY-MM-DD string relative to the current date (${todayDate}) and pass it to tools.
 - 如果你要结账平账，请使用 settle_bills 工具。
@@ -73,7 +82,7 @@ export class AIAgent {
     // We will collect any records queried/created during this session to send back as structured metadata
     let collectedRecords: any[] = []
     let iterations = 0
-    const maxIterations = 5
+    const maxIterations = 15
 
     while (iterations < maxIterations) {
       iterations++
@@ -129,7 +138,8 @@ export class AIAgent {
 
       // Execute tool calls
       console.log(`[AIAgent] DeepSeek requested ${message.tool_calls.length} tool call(s)`)
-      for (const toolCall of message.tool_calls) {
+      
+      const toolCallPromises = message.tool_calls.map(async (toolCall: any) => {
         const { name, arguments: rawArgs } = toolCall.function
         const parsedArgs = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs
         console.log(`[AIAgent] Executing tool: ${name} with args:`, parsedArgs)
@@ -151,6 +161,14 @@ export class AIAgent {
         console.log(`[AIAgent] Tool result for ${name}:`, toolResult)
         onStep?.({ type: 'status', status: 'tool_complete', tool: name, message: msg.end })
 
+        return { toolCall, toolResult, name }
+      })
+
+      // Wait for all tools in this batch to complete
+      const toolResults = await Promise.all(toolCallPromises)
+
+      // Collect records and append messages in the exact order
+      for (const { toolCall, toolResult, name } of toolResults) {
         if (toolResult.success) {
           if (name === 'query_records' || name === 'query_financial_data' || name === 'add_record') {
             if (Array.isArray(toolResult.records)) {
