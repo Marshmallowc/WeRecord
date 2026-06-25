@@ -1,4 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js'
+import { z } from 'zod'
+import { zodToJsonSchema } from 'zod-to-json-schema'
 
 export interface AgentContext {
   supabase: SupabaseClient
@@ -13,7 +15,8 @@ export interface AgentContext {
 export interface ToolDefinition<T = any> {
   name: string
   description: string
-  parameters?: any // JSON Schema parameter block
+  parameters?: any // Fallback JSON Schema parameter block
+  zodSchema?: z.ZodSchema<T>
   execute: (context: AgentContext, args: T) => Promise<any>
 }
 
@@ -39,14 +42,27 @@ export class AgentSkillRegistry {
   }
 
   getToolSchemas() {
-    return this.getTools().map(t => ({
-      type: 'function',
-      function: {
-        name: t.name,
-        description: t.description,
-        ...(t.parameters ? { parameters: t.parameters } : {})
+    return this.getTools().map(t => {
+      let parameters = t.parameters
+      if (t.zodSchema) {
+        let converted: any
+        if (typeof (t.zodSchema as any).toJSONSchema === 'function') {
+          converted = (t.zodSchema as any).toJSONSchema()
+        } else {
+          converted = zodToJsonSchema(t.zodSchema as any) as any
+        }
+        const { $schema, ...clean } = converted
+        parameters = clean
       }
-    }))
+      return {
+        type: 'function',
+        function: {
+          name: t.name,
+          description: t.description,
+          ...(parameters ? { parameters } : {})
+        }
+      }
+    })
   }
 
   async executeTool(name: string, context: AgentContext, args: any): Promise<any> {
@@ -55,6 +71,17 @@ export class AgentSkillRegistry {
       return { success: false, error: `Tool ${name} not found in registry.` }
     }
     try {
+      if (tool.zodSchema) {
+        const parsed = tool.zodSchema.safeParse(args)
+        if (!parsed.success) {
+          const errors = parsed.error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
+          return {
+            success: false,
+            error: `Zod validation failed for tool ${name} arguments: ${errors}`
+          }
+        }
+        args = parsed.data
+      }
       return await tool.execute(context, args)
     } catch (err: any) {
       console.error(`[AgentSkillRegistry] Error executing tool ${name}:`, err)

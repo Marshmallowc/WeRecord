@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
     .select('id, payer, status, total_amount, my_share, bill_type, source_text, note, image_urls, date, created_at, aa_items(id, name, amount, category)')
     .eq('couple_id', coupleId)
     .eq('status', 'pending')
+    .is('deleted_at', null)
     .order('date', { ascending: false })
 
   if (error) {

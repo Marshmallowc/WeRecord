@@ -21,10 +21,12 @@ export async function GET() {
     supabase.from('gifts')
       .select('id, from_user, title, description, amount, category, image_urls, date, created_at')
       .eq('couple_id', coupleId)
+      .is('deleted_at', null)
       .order('date', { ascending: false }),
     supabase.from('aa_bills')
       .select('payer, status, my_share, total_amount, date, created_at, aa_items(name, amount, category)')
       .eq('couple_id', coupleId)
+      .is('deleted_at', null)
       .order('date', { ascending: false }),
   ])
 

@@ -31,11 +31,13 @@ export const queryRecordsTool: ToolDefinition<{
         .from('gifts')
         .select('id, from_user, to_user, title, amount, description, category, source_text, image_urls, date, created_at')
         .eq('couple_id', coupleId)
+        .is('deleted_at', null)
 
       let billQuery = supabase
         .from('aa_bills')
         .select('id, payer, status, total_amount, my_share, source_text, note, image_urls, date, created_at, aa_items(id, name, amount, category)')
         .eq('couple_id', coupleId)
+        .is('deleted_at', null)
 
       // Keywords search
       if (args.query) {
@@ -141,11 +143,13 @@ export const getFinancialStatsTool: ToolDefinition<{
         .from('gifts')
         .select('from_user, amount, category, date')
         .eq('couple_id', coupleId)
+        .is('deleted_at', null)
 
       let billQuery = supabase
         .from('aa_bills')
         .select('payer, status, my_share, total_amount, date, aa_items(amount, category)')
         .eq('couple_id', coupleId)
+        .is('deleted_at', null)
 
       if (args.start_date) {
         giftQuery = giftQuery.gte('date', args.start_date)
@@ -278,11 +282,13 @@ export const queryFinancialDataTool: ToolDefinition<{
         .from('gifts')
         .select('id, from_user, to_user, title, amount, description, category, source_text, image_urls, date, created_at')
         .eq('couple_id', coupleId)
+        .is('deleted_at', null)
 
       let billQuery = supabase
         .from('aa_bills')
         .select('id, payer, status, total_amount, my_share, source_text, note, image_urls, date, created_at, aa_items(id, name, amount, category)')
         .eq('couple_id', coupleId)
+        .is('deleted_at', null)
 
       // Apply Payer filter
       if (args.payer) {

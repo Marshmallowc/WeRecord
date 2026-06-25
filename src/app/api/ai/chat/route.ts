@@ -85,8 +85,16 @@ export async function POST(req: NextRequest) {
     const encoder = new TextEncoder()
     const stream = new ReadableStream({
       async start(controller) {
+        let isClosed = false
+
         const sendStep = (step: any) => {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(step)}\n\n`))
+          if (isClosed) return
+          try {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(step)}\n\n`))
+          } catch (e) {
+            isClosed = true
+            console.error('[API Chat Route] Failed to enqueue chunk, stream might be closed:', e)
+          }
         }
 
         try {
@@ -99,8 +107,18 @@ export async function POST(req: NextRequest) {
           console.error('[API Chat Route Streaming] Agent run failed:', err)
           sendStep({ type: 'error', error: err.message || 'AI Assistant run failed' })
         } finally {
-          controller.close()
+          if (!isClosed) {
+            isClosed = true
+            try {
+              controller.close()
+            } catch (e) {
+              console.error('[API Chat Route] Failed to close stream:', e)
+            }
+          }
         }
+      },
+      cancel() {
+        console.log('[API Chat Route] Stream canceled by client')
       }
     })
 

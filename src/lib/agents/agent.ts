@@ -24,8 +24,8 @@ const SYSTEM_PROMPT_TEMPLATE = (myIdentity: string, myName: string, partnerName:
    - 'me' 指代“当前说话人”（即发送文字的 ${myName}）。
    - 'her' 指代“伴侣”（即 ${partnerName}）。
    - 即使 ${myName} 是女生，在记账 JSON 的 from/to/payer 中也要用 'me' 指代自己，用 'her' 指代伴侣。
-2. 并行调用与批量处理 (Parallel Execution - 极度重要)：
-   - 当前端支持批量确认时，**当用户提供多笔账单流水（如一段长游记），你必须在单次回复中并发触发多次 \`add_record\` 工具调用！** 绝不允许将长流水拆分到多次对话中，也绝不允许反问用户“是否继续录入”。
+2. 批量处理 (Batch Processing - 极度重要)：
+   - 当用户提供多笔账单流水（如一段长游记），**你必须使用单次 \`add_record\` 工具调用，并将所有提取出的账单以数组形式放入 \`records\` 属性中！** 绝不允许把它们拆分成多次独立的 \`add_record\` 工具调用，也绝不允许只录入一部分，更不能反问用户“是否继续录入”。一次性把它们全部提取出来。
 3. 分摊方式 (split_type)：
    - 'average'：默认平摊。
    - 'payer_all'：付款人全额承担（如我请客我付钱）。
@@ -84,25 +84,32 @@ export class AIAgent {
     let iterations = 0
     const maxIterations = 15
 
-    while (iterations < maxIterations) {
-      iterations++
-      console.log(`[AIAgent] Running iteration ${iterations}...`)
-      onStep?.({ type: 'status', status: 'thinking', message: '思考中' })
+    // Global heartbeat: Keep connection alive during BOTH LLM generation and tool execution.
+    // This is the industry standard practice for long-running AI agents over SSE.
+    const globalHeartbeat = setInterval(() => {
+      onStep?.({ type: 'ping' } as any)
+    }, 5000)
 
-      const response = await fetch('https://api.deepseek.com/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: 'deepseek-chat',
-          messages: messagesToSend,
-          tools: this.registry.getToolSchemas(),
-          tool_choice: 'auto',
-          temperature: 0.1,
-        }),
-      })
+    try {
+      while (iterations < maxIterations) {
+        iterations++
+        console.log(`[AIAgent] Running iteration ${iterations}...`)
+        onStep?.({ type: 'status', status: 'thinking', message: '思考中' })
+
+        const response = await fetch('https://api.deepseek.com/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: 'deepseek-chat',
+            messages: messagesToSend,
+            tools: this.registry.getToolSchemas(),
+            tool_choice: 'auto',
+            temperature: 0.1,
+          }),
+        })
 
       if (!response.ok) {
         const errText = await response.text()
@@ -169,14 +176,13 @@ export class AIAgent {
 
       // Collect records and append messages in the exact order
       for (const { toolCall, toolResult, name } of toolResults) {
-        if (toolResult.success) {
-          if (name === 'query_records' || name === 'query_financial_data' || name === 'add_record') {
-            if (Array.isArray(toolResult.records)) {
-              collectedRecords = [...collectedRecords, ...toolResult.records]
-            }
-          } else if (name === 'settle_bills' && Array.isArray(toolResult.settled_bills)) {
-            collectedRecords = [...collectedRecords, ...toolResult.settled_bills]
+        // Collect successfully processed records even on partial failures, so they can render on the client UI
+        if (name === 'query_records' || name === 'query_financial_data' || name === 'add_record') {
+          if (Array.isArray(toolResult.records)) {
+            collectedRecords = [...collectedRecords, ...toolResult.records]
           }
+        } else if (name === 'settle_bills' && Array.isArray(toolResult.settled_bills)) {
+          collectedRecords = [...collectedRecords, ...toolResult.settled_bills]
         }
 
         // Append tool call result message
@@ -194,6 +200,9 @@ export class AIAgent {
     return {
       text: lastMsg?.role === 'assistant' ? lastMsg.content : '对不起，我处理该请求耗费了太长时间，请换个简单的方式问我吧。',
       records: collectedRecords.length > 0 ? collectedRecords : undefined
+    }
+    } finally {
+      clearInterval(globalHeartbeat)
     }
   }
 }

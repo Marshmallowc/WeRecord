@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
       name, 
       couple_id: profile.couple_id,
       color: color ?? categoryColor(name) 
-    }, { onConflict: 'couple_id, name' })
+    }, { onConflict: 'name' })
     .select()
     .single()
 

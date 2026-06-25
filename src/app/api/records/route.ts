@@ -26,8 +26,10 @@ export async function GET(req: NextRequest) {
 
   let giftQuery = supabase.from('gifts').select('id, creator_id, from_user, to_user, title, amount, description, category, source_text, image_urls, date, created_at, event_id, events(title)')
     .eq('couple_id', coupleId)
+    .is('deleted_at', null)
   let billQuery = supabase.from('aa_bills').select('id, creator_id, payer, status, total_amount, my_share, bill_type, source_text, note, image_urls, date, created_at, event_id, events(title), aa_items(id, name, amount, category)')
     .eq('couple_id', coupleId)
+    .is('deleted_at', null)
   let insightQuery = supabase.from('ai_insights').select('id, content, insight_type, date, created_at')
     .eq('couple_id', coupleId)
 
@@ -280,13 +282,15 @@ export async function DELETE(req: NextRequest) {
   const type = searchParams.get('type')
 
   if (!id || !type) return NextResponse.json({ error: 'Missing params' }, { status: 400 })
+  const now = new Date().toISOString()
 
   if (type === 'gift') {
-    await supabase.from('gifts').delete().eq('id', id).eq('couple_id', profile.couple_id)
+    await supabase.from('gifts').update({ deleted_at: now }).eq('id', id).eq('couple_id', profile.couple_id)
   } else if (type === 'insight') {
+    // ai_insights has no soft delete since it's not critical, but let's keep delete
     await supabase.from('ai_insights').delete().eq('id', id).eq('couple_id', profile.couple_id)
   } else {
-    await supabase.from('aa_bills').delete().eq('id', id).eq('couple_id', profile.couple_id)
+    await supabase.from('aa_bills').update({ deleted_at: now }).eq('id', id).eq('couple_id', profile.couple_id)
   }
   return NextResponse.json({ success: true })
 }

@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
     .from('events')
     .select('*')
     .eq('couple_id', coupleId)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
 
   if (eventsError) {
@@ -30,12 +31,14 @@ export async function GET(req: NextRequest) {
     .from('aa_bills')
     .select('event_id, total_amount')
     .eq('couple_id', coupleId)
+    .is('deleted_at', null)
     .not('event_id', 'is', null)
 
   const { data: gifts } = await supabase
     .from('gifts')
     .select('event_id, amount')
     .eq('couple_id', coupleId)
+    .is('deleted_at', null)
     .not('event_id', 'is', null)
 
   // Calculate aggregates
