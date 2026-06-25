@@ -47,14 +47,14 @@ export async function GET(req: NextRequest) {
   }
 
   const queries: any[] = [
-    giftQuery.order('date', { ascending: false }).order('created_at', { ascending: false }).limit(fetchLimit + 1),
-    billQuery.order('date', { ascending: false }).order('created_at', { ascending: false }).limit(fetchLimit + 1),
+    giftQuery.order('date', { ascending: false }).order('created_at', { ascending: false }).order('id', { ascending: false }).limit(fetchLimit + 1),
+    billQuery.order('date', { ascending: false }).order('created_at', { ascending: false }).order('id', { ascending: false }).limit(fetchLimit + 1),
   ]
 
   // Only include insights if explicitly requested or if type is 'insight'
   const shouldIncludeInsights = includeInsights || type === 'insight'
   if (shouldIncludeInsights) {
-    queries.push(insightQuery.order('date', { ascending: false }).order('created_at', { ascending: false }).limit(fetchLimit + 1))
+    queries.push(insightQuery.order('date', { ascending: false }).order('created_at', { ascending: false }).order('id', { ascending: false }).limit(fetchLimit + 1))
   }
 
   const results = await Promise.all(queries)
@@ -96,7 +96,10 @@ export async function GET(req: NextRequest) {
     const d1 = new Date(a.date).getTime()
     const d2 = new Date(b.date).getTime()
     if (d1 !== d2) return d2 - d1
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    const c1 = new Date(a.created_at).getTime()
+    const c2 = new Date(b.created_at).getTime()
+    if (c1 !== c2) return c2 - c1
+    return b.id.localeCompare(a.id)
   })
 
   const offset = (page - 1) * limit
