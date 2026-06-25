@@ -72,7 +72,7 @@ export default function RecordsHistoryPage() {
     return `/api/records?page=${pageIndex + 1}&limit=20&search=${search}&type=${filterType}&category=${filterCategory}`
   }
 
-  const { data: recordsData, error: recordsError, size, setSize, isLoading: isLoadingRecords, mutate: mutateRecords } = useSWRInfinite(
+  const { data: recordsData, error: recordsError, size, setSize, isLoading: isLoadingRecords, mutate: mutateRecords, isValidating } = useSWRInfinite(
     getKey,
     fetcher,
     {
@@ -584,30 +584,32 @@ export default function RecordsHistoryPage() {
       {editingRecord && (
         <EditModal
           record={editingRecord}
-          categories={categories}
           onClose={() => setEditingRecord(null)}
-          onSuccess={() => {
-            setEditingRecord(null)
+          onSave={() => {
             mutateRecords()
             mutatePending()
           }}
-          onDelete={() => {
-            handleDelete(editingRecord.id, editingRecord.record_type)
-            setEditingRecord(null)
-          }}
+          onDelete={handleDelete}
+          identity={identity || 'me'}
+          partnerName={partnerName}
         />
       )}
 
       {paymentRecord && (
         <PaymentModal
-          record={paymentRecord}
+          isOpen={!!paymentRecord}
+          amount={
+            identity === 'me'
+              ? (paymentRecord.my_share || 0)
+              : ((paymentRecord.total_amount || 0) - (paymentRecord.my_share || 0))
+          }
+          billName={paymentRecord.aa_items?.map(i => i.name).join('、') || '一笔账单'}
           partnerName={partnerName}
-          alipayCode={partnerAlipayCode}
+          alipayCode={partnerAlipayCode || ''}
           onClose={() => setPaymentRecord(null)}
-          onSuccess={() => {
+          onConfirm={() => {
+            handleSettle(paymentRecord.id, paymentRecord)
             setPaymentRecord(null)
-            mutateRecords()
-            mutatePending()
           }}
         />
       )}

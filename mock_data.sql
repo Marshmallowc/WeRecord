@@ -5,6 +5,7 @@
 DELETE FROM aa_items;
 DELETE FROM aa_bills;
 DELETE FROM gifts;
+DELETE FROM events;
 
 -- 2. 生成 Mock 礼物 (Gifts) - 过去 180 天分布
 INSERT INTO gifts (from_user, to_user, title, amount, category, date, created_at)

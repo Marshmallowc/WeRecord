@@ -24,9 +24,9 @@ export async function GET(req: NextRequest) {
   const type = searchParams.get('type') // 'gift' or 'aa'
   const includeInsights = searchParams.get('include_insights') === 'true'
 
-  let giftQuery = supabase.from('gifts').select('id, creator_id, from_user, to_user, title, amount, description, category, source_text, image_urls, date, created_at')
+  let giftQuery = supabase.from('gifts').select('id, creator_id, from_user, to_user, title, amount, description, category, source_text, image_urls, date, created_at, event_id, events(title)')
     .eq('couple_id', coupleId)
-  let billQuery = supabase.from('aa_bills').select('id, creator_id, payer, status, total_amount, my_share, bill_type, source_text, note, image_urls, date, created_at, aa_items(id, name, amount, category)')
+  let billQuery = supabase.from('aa_bills').select('id, creator_id, payer, status, total_amount, my_share, bill_type, source_text, note, image_urls, date, created_at, event_id, events(title), aa_items(id, name, amount, category)')
     .eq('couple_id', coupleId)
   let insightQuery = supabase.from('ai_insights').select('id, content, insight_type, date, created_at')
     .eq('couple_id', coupleId)
@@ -45,14 +45,14 @@ export async function GET(req: NextRequest) {
   }
 
   const queries: any[] = [
-    giftQuery.order('date', { ascending: false }).order('created_at', { ascending: false }).limit(fetchLimit),
-    billQuery.order('date', { ascending: false }).order('created_at', { ascending: false }).limit(fetchLimit),
+    giftQuery.order('date', { ascending: false }).order('created_at', { ascending: false }).limit(fetchLimit + 1),
+    billQuery.order('date', { ascending: false }).order('created_at', { ascending: false }).limit(fetchLimit + 1),
   ]
 
   // Only include insights if explicitly requested or if type is 'insight'
   const shouldIncludeInsights = includeInsights || type === 'insight'
   if (shouldIncludeInsights) {
-    queries.push(insightQuery.order('date', { ascending: false }).order('created_at', { ascending: false }).limit(fetchLimit))
+    queries.push(insightQuery.order('date', { ascending: false }).order('created_at', { ascending: false }).limit(fetchLimit + 1))
   }
 
   const results = await Promise.all(queries)
@@ -60,9 +60,25 @@ export async function GET(req: NextRequest) {
   const billsRes = results[1] as any
   const insightsRes = shouldIncludeInsights ? results[2] as any : { data: [] }
 
-  const giftItems = (giftsRes.data ?? []).map((g: any) => ({ ...g, record_type: 'gift' }))
-  let billItems = (billsRes.data ?? []).map((b: any) => ({ ...b, record_type: b.bill_type || 'aa' }))
-  const insightItems = (insightsRes.data ?? []).map((i: any) => ({ ...i, record_type: 'insight' }))
+  const giftItemsRaw = giftsRes.data ?? []
+  const billItemsRaw = billsRes.data ?? []
+  const insightItemsRaw = insightsRes.data ?? []
+
+  const giftsHasMore = giftItemsRaw.length > fetchLimit
+  const billsHasMore = billItemsRaw.length > fetchLimit
+  const insightsHasMore = insightItemsRaw.length > fetchLimit
+
+  const giftItems = giftItemsRaw.slice(0, fetchLimit).map((g: any) => ({
+    ...g,
+    record_type: 'gift',
+    event_title: g.events?.title
+  }))
+  let billItems = billItemsRaw.slice(0, fetchLimit).map((b: any) => ({
+    ...b,
+    record_type: b.bill_type || 'aa',
+    event_title: b.events?.title
+  }))
+  const insightItems = insightItemsRaw.slice(0, fetchLimit).map((i: any) => ({ ...i, record_type: 'insight' }))
 
   if (category) {
     billItems = billItems.filter((b: any) => b.aa_items?.some((i: any) => i.category === category))
@@ -83,7 +99,9 @@ export async function GET(req: NextRequest) {
 
   const offset = (page - 1) * limit
   const paginatedData = combined.slice(offset, offset + limit)
-  const hasMore = combined.length > offset + limit
+  
+  // hasMore is true if we have remaining items in combined, or if either database has more items than fetchLimit
+  const hasMore = (combined.length > offset + limit) || giftsHasMore || billsHasMore || (shouldIncludeInsights && insightsHasMore)
 
   return NextResponse.json({ data: paginatedData, hasMore })
 }
@@ -153,7 +171,8 @@ export async function PATCH(req: NextRequest) {
           note: gift.title + (gift.description ? ` | ${gift.description}` : ''),
           date: updates.date || gift.date,
           image_urls: gift.image_urls,
-          created_at: gift.created_at
+          created_at: gift.created_at,
+          event_id: gift.event_id
         })
       
       if (insErr) {
@@ -202,7 +221,8 @@ export async function PATCH(req: NextRequest) {
           source_text: bill.source_text,
           date: updates.date || bill.date,
           image_urls: bill.image_urls,
-          created_at: bill.created_at
+          created_at: bill.created_at,
+          event_id: bill.event_id
         })
       
       if (insErr) {
