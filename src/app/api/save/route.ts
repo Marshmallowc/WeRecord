@@ -51,13 +51,14 @@ export async function POST(req: NextRequest) {
   const categoryList = Array.from(categoriesToUpsert)
 
   await Promise.all([
-    // Resolve events
+    // Resolve events (only match active ones)
     (async () => {
       if (eventTitles.length > 0) {
         const { data: existingEvents } = await supabase
           .from('events')
           .select('id, title')
           .eq('couple_id', coupleId)
+          .is('deleted_at', null)
           .in('title', eventTitles)
 
         if (existingEvents) {

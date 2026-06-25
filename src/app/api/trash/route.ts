@@ -86,10 +86,54 @@ export async function POST(req: NextRequest) {
   if (!id || !type) return NextResponse.json({ error: 'Missing params' }, { status: 400 })
 
   if (type === 'event') {
-    // Restore the event
+    // Fetch the soft-deleted event to check its title
+    const { data: eventToRestore, error: fetchErr } = await supabase
+      .from('events')
+      .select('title')
+      .eq('id', id)
+      .eq('couple_id', coupleId)
+      .single()
+
+    if (fetchErr || !eventToRestore) {
+      return NextResponse.json({ error: fetchErr?.message || 'Event not found' }, { status: 404 })
+    }
+
+    // Check if an active event with the same title already exists
+    let targetTitle = eventToRestore.title
+    const { data: activeEvent } = await supabase
+      .from('events')
+      .select('id')
+      .eq('couple_id', coupleId)
+      .eq('title', targetTitle)
+      .is('deleted_at', null)
+      .maybeSingle()
+
+    // If there is an active event with the same title, rename the restored one
+    if (activeEvent) {
+      let isConflict = true
+      let suffixCount = 1
+      while (isConflict) {
+        const testTitle = `${eventToRestore.title} (已恢复-${suffixCount})`
+        const { data: testActive } = await supabase
+          .from('events')
+          .select('id')
+          .eq('couple_id', coupleId)
+          .eq('title', testTitle)
+          .is('deleted_at', null)
+          .maybeSingle()
+        if (!testActive) {
+          targetTitle = testTitle
+          isConflict = false
+        } else {
+          suffixCount++
+        }
+      }
+    }
+
+    // Restore the event (and update title if it was renamed)
     const { error: evError } = await supabase
       .from('events')
-      .update({ deleted_at: null })
+      .update({ deleted_at: null, title: targetTitle })
       .eq('id', id)
       .eq('couple_id', coupleId)
     if (evError) return NextResponse.json({ error: evError.message }, { status: 500 })
