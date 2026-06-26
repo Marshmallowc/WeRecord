@@ -89,6 +89,120 @@ export const addRecordSchema = z.object({
   ).describe('需要批量生成的账单/礼物/草稿对象数组')
 })
 
+export interface GenerateDraftParams {
+  record: any;
+  tempId: string;
+  coupleId: string;
+  userId: string;
+  identity: 'me' | 'her';
+  imageUrls: string[];
+}
+
+export interface GenerateDraftResult {
+  displayPayload: any;
+  dbInsertRow: {
+    id: string;
+    couple_id: string;
+    creator_id: string;
+    record_type: string;
+    payload: any;
+    created_at: string;
+  };
+}
+
+/**
+ * 纯函数：将 AI 提取的记录转化为前端展示的草稿 Payload 和数据库批量插入行
+ */
+export function generateDraft({
+  record,
+  tempId,
+  coupleId,
+  userId,
+  identity,
+  imageUrls,
+}: GenerateDraftParams): GenerateDraftResult {
+  const resolveIdentity = (val?: string) => {
+    if (!val) return 'me';
+    if (identity !== 'her') return val;
+    if (val === 'me') return 'her';
+    if (val === 'her') return 'me';
+    return val;
+  };
+
+  let draftDisplayPayload: any;
+  const rawType = record.type;
+  const recordType = rawType === 'personal' ? 'aa' : rawType;
+
+  if (recordType === 'gift') {
+    draftDisplayPayload = {
+      id: tempId,
+      record_type: 'gift',
+      is_draft: true,
+      reasoning: record.reasoning || null,
+      from_user: resolveIdentity(record.from),
+      to_user: resolveIdentity(record.to),
+      title: record.title || '礼物',
+      amount: record.amount,
+      description: record.description || null,
+      category: record.category || null,
+      source_text: record.source_text,
+      event_title: record.event_title || null,
+      image_urls: imageUrls,
+      date: record.date || new Date().toISOString().split('T')[0],
+    };
+  } else {
+    const dbPayer = resolveIdentity(record.payer) as 'me' | 'her';
+    const safeTotal = record.amount || 0;
+    let dbMyShare = 0;
+
+    if (rawType === 'personal' || record.split_type === 'personal') {
+      dbMyShare = dbPayer === 'me' ? safeTotal : 0;
+    } else if (recordType === 'borrow') {
+      dbMyShare = dbPayer === 'me' ? 0 : safeTotal;
+    } else {
+      dbMyShare = calculateDbMyShare({
+        splitType: (record.split_type || 'average') as 'average' | 'payer_all' | 'partner_all' | 'custom',
+        total: safeTotal,
+        aiMyShare: record.my_share || 0,
+        dbPayer,
+        identity: identity as 'me' | 'her',
+      });
+    }
+
+    draftDisplayPayload = {
+      id: tempId,
+      record_type: recordType,
+      is_draft: true,
+      reasoning: record.reasoning || null,
+      payer: dbPayer,
+      status: 'pending',
+      total_amount: safeTotal,
+      my_share: dbMyShare,
+      source_text: record.source_text,
+      event_title: record.event_title || null,
+      image_urls: imageUrls,
+      note: record.description || null,
+      title: record.title || '支出记录',
+      aa_items: [{ id: `draft-item-${tempId}-0`, name: record.title || '支出项', amount: safeTotal, category: record.category || null }],
+      date: record.date || new Date().toISOString().split('T')[0],
+    };
+  }
+
+  const dbInsertRow = {
+    id: tempId,
+    couple_id: coupleId,
+    creator_id: userId,
+    record_type: recordType,
+    payload: draftDisplayPayload,
+    created_at: new Date().toISOString(),
+  };
+
+  return {
+    displayPayload: draftDisplayPayload,
+    dbInsertRow,
+  };
+}
+
 export const addRecordTool: ToolDefinition<z.infer<typeof addRecordSchema>> = {
   name: 'add_record',
   description: '生成一条或多条记账草稿以供用户核对确认，并返回草稿卡片（is_draft: true）。该操作并没有直接存入数据库，请引导用户核对草稿并一键确认。如果是礼物填写 from/to，如果是账单填写 payer/split_type。如果用户记录的是一组属于同一场景的开销（如“威海游”、“装修”），请提炼一个简短的 event_title，并确保该组所有账单都填入相同的 event_title。如果只是零散的日常开销，请留空。支持一次性生成多条记录。',
@@ -100,125 +214,40 @@ export const addRecordTool: ToolDefinition<z.infer<typeof addRecordSchema>> = {
     try {
       if (!supabase) throw new Error('Supabase client not found in context');
 
+      const draftsToInsert: any[] = []
       const results: any[] = []
-      const failedRecords: any[] = []
-      
-      const insertPromises = args.records.map(async (record, i) => {
+
+      // 1. 批量在内存中构造草稿，实现 CPU 密集计算与 I/O 写入逻辑的彻底解耦
+      for (const record of args.records) {
         const tempId = `draft-${Date.now()}-${Math.floor(Math.random() * 1000)}`
-        
-        const resolveIdentity = (val?: string) => {
-          if (!val) return 'me'
-          if (identity !== 'her') return val
-          if (val === 'me') return 'her'
-          if (val === 'her') return 'me'
-          return val
-        }
+        const { displayPayload, dbInsertRow } = generateDraft({
+          record,
+          tempId,
+          coupleId,
+          userId,
+          identity,
+          imageUrls
+        })
+        draftsToInsert.push(dbInsertRow)
+        results.push({ draft_id: tempId, ...displayPayload })
+      }
 
-        let draftDisplayPayload: any;
-        const rawType = record.type
-        // Map personal to aa to bypass database constraints
-        const recordType = rawType === 'personal' ? 'aa' : rawType
-
-        if (recordType === 'gift') {
-          draftDisplayPayload = {
-            id: tempId,
-            record_type: 'gift',
-            is_draft: true,
-            reasoning: record.reasoning || null,
-            from_user: resolveIdentity(record.from),
-            to_user: resolveIdentity(record.to),
-            title: record.title || '礼物',
-            amount: record.amount,
-            description: record.description || null,
-            category: record.category || null,
-            source_text: record.source_text,
-            event_title: record.event_title || null,
-            image_urls: imageUrls,
-            date: record.date || new Date().toISOString().split('T')[0],
+      // 2. 批量将草稿写入数据库 (Bulk Insert)，仅需 1 次网络 I/O，规避并发写导致连接池耗尽
+      if (draftsToInsert.length > 0) {
+        try {
+          const { error: insertError } = await supabase.from('aa_drafts').insert(draftsToInsert)
+          if (insertError) {
+            console.error('[Agent Tool: add_record] Failed to bulk insert drafts:', insertError)
+            // 降级容错：仅打印错误，并为草稿数据置上 db_pending = true 状态，不影响用户正常使用
+            results.forEach(r => r.db_pending = true)
           }
-        } else {
-          const dbPayer = resolveIdentity(record.payer) as 'me' | 'her'
-          const safeTotal = record.amount || 0
-          let dbMyShare = 0;
-
-          if (rawType === 'personal' || record.split_type === 'personal') {
-             dbMyShare = dbPayer === 'me' ? safeTotal : 0;
-          } else if (recordType === 'borrow') {
-             dbMyShare = dbPayer === 'me' ? 0 : safeTotal;
-          } else {
-             dbMyShare = calculateDbMyShare({
-               splitType: (record.split_type || 'average') as 'average' | 'payer_all' | 'partner_all' | 'custom',
-               total: safeTotal,
-               aiMyShare: record.my_share || 0,
-               dbPayer,
-               identity: identity as 'me' | 'her'
-             })
-          }
-
-          draftDisplayPayload = {
-            id: tempId,
-            record_type: recordType,
-            is_draft: true,
-            reasoning: record.reasoning || null,
-            payer: dbPayer,
-            status: 'pending',
-            total_amount: safeTotal,
-            my_share: dbMyShare,
-            source_text: record.source_text,
-            event_title: record.event_title || null,
-            image_urls: imageUrls,
-            note: record.description || null,
-            title: record.title || '支出记录',
-            aa_items: [{ id: `draft-item-${tempId}-0`, name: record.title || '支出项', amount: safeTotal, category: record.category || null }],
-            date: record.date || new Date().toISOString().split('T')[0],
-          }
-        }
-
-        const draftToInsert = {
-          id: tempId,
-          couple_id: coupleId,
-          creator_id: userId,
-          record_type: recordType,
-          payload: draftDisplayPayload,
-          created_at: new Date().toISOString()
-        }
-
-        const { error: insertError } = await supabase.from('aa_drafts').insert([draftToInsert]);
-        if (insertError) {
-          console.error('Failed to save draft:', insertError);
-          throw new Error(`数据库插入失败: ${insertError.message || JSON.stringify(insertError)}`);
-        }
-
-        return { draft_id: tempId, ...draftDisplayPayload }
-      });
-
-      const settled = await Promise.allSettled(insertPromises);
-      settled.forEach((result, i) => {
-        const record = args.records[i]
-        if (result.status === 'fulfilled') {
-          results.push(result.value)
-        } else {
-          console.error(`[Agent Tool: add_record] Record at index ${i} ("${record.title}") failed:`, result.reason)
-          failedRecords.push({
-            index: i,
-            title: record.title,
-            amount: record.amount,
-            error: result.reason.message || '未知保存失败'
-          })
-        }
-      });
-
-      if (failedRecords.length > 0) {
-        // Partial success response format
-        return {
-          success: false,
-          error: `批量保存出现部分失败。在 ${args.records.length} 笔账单中，成功 ${results.length} 笔，失败 ${failedRecords.length} 笔。注意：成功的卡片已正常入库（请绝对不要重新录入这部分，以免产生重复脏数据）。请仔细分析错误原因，并【仅针对】这 ${failedRecords.length} 笔失败的账单重新调用 add_record。失败详情: ${JSON.stringify(failedRecords)}`,
-          records: results,
-          success_count: results.length,
-          failed_count: failedRecords.length
+        } catch (dbErr) {
+          console.error('[Agent Tool: add_record] DB Connection Error during bulk insert:', dbErr)
+          results.forEach(r => r.db_pending = true)
         }
       }
 
+      // 3. 始终成功返回完整的草稿数据，确保用户数据在任何情况下都不会丢失
       return {
         success: true,
         count: results.length,

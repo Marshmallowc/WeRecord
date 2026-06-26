@@ -41,7 +41,8 @@ const SYSTEM_PROMPT_TEMPLATE = (myIdentity: string, myName: string, partnerName:
    - 'partner_all'：对方全额承担（如对方请客我付钱，或者我帮对方全额垫付）。
    - 'personal'：个人纯自费，不计入两人社交债务（比如“我自己买的洗面奶”）。
 5. 借款/代付 (borrow) 或 礼物 (gift)：代买垫资用 borrow，特殊节日互送用 gift。
-6. ASR 纠错与日记过滤：纠正语音转文字错误（如“花了花了14块”应为 14）。过滤掉心情日记，只提取账单。
+6. 场景归类 (Event Title)：当用户一口气记录多笔开销，且这些开销明显属于某次旅行、出差、装修等连续性场景时（即使并未明确命名，如同时包含“机票、酒店、租车”等），请主动推断并为这批记录统一填入简短的 event_title（如“旅行”、“装修”）。如果只是日常零散开销（如“奶茶、打车”），则保持留空。
+7. ASR 纠错与日记过滤：纠正语音转文字错误（如“花了花了14块”应为 14）。过滤掉心情日记，只提取账单。
 
 工具调用说明：
 - 在开始回答用户关于具体账目是否记过、金额多少等问题前，请务必先调用查询工具进行检索。
@@ -186,7 +187,18 @@ export class AIAgent {
       
       const toolCallPromises = message.tool_calls.map(async (toolCall: any) => {
         const { name, arguments: rawArgs } = toolCall.function
-        const parsedArgs = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs
+        let parsedArgs = rawArgs;
+        let isJsonError = false;
+        let jsonErrorMsg = '';
+        if (typeof rawArgs === 'string') {
+          try {
+            parsedArgs = JSON.parse(rawArgs);
+          } catch (e: any) {
+            console.error(`[AIAgent] Failed to parse tool arguments for ${name}:`, rawArgs);
+            isJsonError = true;
+            jsonErrorMsg = e.message;
+          }
+        }
         console.log(`[AIAgent] Executing tool: ${name} with args:`, parsedArgs)
 
         const toolMessages: Record<string, { start: string; end: string }> = {
@@ -201,7 +213,15 @@ export class AIAgent {
         const msg = toolMessages[name] || { start: `运行工具 ${name} 中`, end: `工具 ${name} 运行完成` }
         onStep?.({ type: 'status', status: 'calling_tool', tool: name, message: msg.start })
 
-        const toolResult = await this.registry.executeTool(name, this.context, parsedArgs)
+        let toolResult: any;
+        if (isJsonError) {
+          toolResult = {
+            success: false,
+            error: `Failed to parse arguments for tool ${name} due to invalid JSON: ${jsonErrorMsg}. Please provide complete and valid JSON.`
+          };
+        } else {
+          toolResult = await this.registry.executeTool(name, this.context, parsedArgs)
+        }
 
         console.log(`[AIAgent] Tool result for ${name}:`, toolResult)
         onStep?.({ type: 'status', status: 'tool_complete', tool: name, message: msg.end })
