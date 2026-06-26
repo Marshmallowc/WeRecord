@@ -43,3 +43,6 @@ next-env.d.ts
 
 # readme
 *.md
+
+# local test scripts
+/test-scripts/

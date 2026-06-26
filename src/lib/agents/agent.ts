@@ -10,7 +10,7 @@ const SYSTEM_PROMPT_TEMPLATE = (myIdentity: string, myName: string, partnerName:
 
 你的任务：
 1. 辅助情侣管理他们的日常 AA 账目、分摊开支与送礼记录。
-2. 回答关于“有无漏记、某笔账记了没有、花了多少钱、谁欠谁多少钱”等任何财务检索和计算的提问。
+2. 回答关于“有无漏记、某笔账记了没有、花了多少钱、谁欠谁多少钱”等任何财务检索 and 计算的提问。
 3. 协助执行日常操作：记账、平账结算、给对方发送提醒推送。
 
 严格执行的约束条件：
@@ -26,12 +26,21 @@ const SYSTEM_PROMPT_TEMPLATE = (myIdentity: string, myName: string, partnerName:
    - 即使 ${myName} 是女生，在记账 JSON 的 from/to/payer 中也要用 'me' 指代自己，用 'her' 指代伴侣。
 2. 批量处理 (Batch Processing - 极度重要)：
    - 当用户提供多笔账单流水（如一段长游记），**你必须使用单次 \`add_record\` 工具调用，并将所有提取出的账单以数组形式放入 \`records\` 属性中！** 绝不允许把它们拆分成多次独立的 \`add_record\` 工具调用，也绝不允许只录入一部分，更不能反问用户“是否继续录入”。一次性把它们全部提取出来。
-3. 分摊方式 (split_type)：
+3. 复杂算账与请客/垫付思维链 (Reasoning & CoT - 极度重要)：
+   - 对于包含请客、垫付、代付的账单（例如：“对方请我，但我先付的款”、“我请客，但对方付钱”、“对方帮我买东西垫付了钱”），必须在每条账单记录的 reasoning 字段中写下具体的推导逻辑。
+   - 推导逻辑规则：
+     - 如果用户说“他/她请客，但我先付的款”，说明：由对方请我，所以最终我应分摊的 my_share 应该为 0。但因为是我先垫付付了款，payer 是 'me'，总金额 amount 是两人的总价，我实际应负担的 my_share 是 0，对方应承担剩余全部。这表示对方欠我总价。
+     - 如果用户说“我请客，但Ta先付的款”，说明：由我请对方，所以最终我应分摊的 my_share 应该为总金额（全包）。因为是对方付款的（payer: 'her'），总金额是两人的总价，我应分摊 my_share 应该是总价。
+     - 如果是纯代付：“帮他买东西X元”，说明：由对方全额承担，所以我的分摊 my_share 是 0。付款人是我（payer: 'me'），总价 amount 是 X。
+     - 如果没有提到请客，默认 AA 平摊，我的分摊 my_share 是总金额的一半。
+   - 请在 records 数组的每个对象的 reasoning 字段中，务必先输出这一步思维链拆解，然后再生成 payer、amount 和 my_share 字段。
+4. 分摊方式 (split_type)：
    - 'average'：默认平摊。
    - 'payer_all'：付款人全额承担（如我请客我付钱）。
+   - 'partner_all'：对方全额承担（如对方请客我付钱，或者我帮对方全额垫付）。
    - 'personal'：个人纯自费，不计入两人社交债务（比如“我自己买的洗面奶”）。
-4. 借款/代付 (borrow) 或 礼物 (gift)：代买垫资用 borrow，特殊节日互送用 gift。
-5. ASR 纠错与日记过滤：纠正语音转文字错误（如“花了花了14块”应为 14）。过滤掉心情日记，只提取账单。
+5. 借款/代付 (borrow) 或 礼物 (gift)：代买垫资用 borrow，特殊节日互送用 gift。
+6. ASR 纠错与日记过滤：纠正语音转文字错误（如“花了花了14块”应为 14）。过滤掉心情日记，只提取账单。
 
 工具调用说明：
 - 在开始回答用户关于具体账目是否记过、金额多少等问题前，请务必先调用查询工具进行检索。
@@ -133,8 +142,36 @@ export class AIAgent {
       }
       messagesToSend.push(modelMessage)
 
-      // If the model does not want to make tool calls, we are finished
+      // If the model does not want to make tool calls, check if it output JSON in message.content as a fallback
       if (!message.tool_calls || message.tool_calls.length === 0) {
+        if (message.content) {
+          const extracted = extractJSONFromText(message.content)
+          if (extracted) {
+            let recordsArgs: any = null
+            if (Array.isArray(extracted)) {
+              recordsArgs = { records: extracted }
+            } else if (extracted && Array.isArray(extracted.records)) {
+              recordsArgs = { records: extracted.records }
+            }
+
+            if (recordsArgs) {
+              console.log('[AIAgent] Extracted records JSON from plain text as a fallback:', recordsArgs)
+              const result = await this.registry.executeTool('add_record', this.context, recordsArgs)
+              if (result.success && Array.isArray(result.records)) {
+                collectedRecords = [...collectedRecords, ...result.records]
+                let cleanText = message.content.replace(/```json[\s\S]*?```/g, '').trim()
+                if (!cleanText) {
+                  cleanText = "我已为你生成了记账草稿，请在下方核对确认："
+                }
+                return {
+                  text: cleanText,
+                  records: collectedRecords
+                }
+              }
+            }
+          }
+        }
+
         console.log(`[AIAgent] Loop finished. Returning final response: "${message.content}"`)
         onStep?.({ type: 'status', status: 'responding', message: '准备回复中' })
         return {
@@ -205,4 +242,36 @@ export class AIAgent {
       clearInterval(globalHeartbeat)
     }
   }
+}
+
+function extractJSONFromText(text: string): any {
+  if (!text) return null
+  // 1. Try to find markdown JSON block
+  const jsonBlockRegex = /```json\s*([\s\S]*?)\s*```/g
+  const match = jsonBlockRegex.exec(text)
+  if (match) {
+    try {
+      return JSON.parse(match[1].trim())
+    } catch (e) {}
+  }
+
+  // 2. Try to find array brackets [...]
+  const arrayRegex = /\[\s*\{[\s\S]*\}\s*\]/g
+  const matchArr = arrayRegex.exec(text)
+  if (matchArr) {
+    try {
+      return JSON.parse(matchArr[0].trim())
+    } catch (e) {}
+  }
+
+  // 3. Try to find object brackets {"records": ...}
+  const objectRegex = /\{\s*"records"[\s\S]*\}/g
+  const matchObj = objectRegex.exec(text)
+  if (matchObj) {
+    try {
+      return JSON.parse(matchObj[0].trim())
+    } catch (e) {}
+  }
+
+  return null
 }

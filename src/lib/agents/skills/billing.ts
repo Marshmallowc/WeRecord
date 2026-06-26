@@ -42,6 +42,8 @@ export function calculateDbMyShare(params: {
 export const addRecordSchema = z.object({
   records: z.array(
     z.object({
+      reasoning: z.string()
+        .describe('思维链推理过程。写出谁付款的、分摊方式、谁请客、是否垫付、我(me)和对方应该如何分摊，逻辑上是如何计算得出最终数字的。请在最开始输出'),
       type: z.enum(['gift', 'aa', 'borrow', 'personal'])
         .describe('记录类型：gift 为礼物，aa 为两人 AA 分摊，borrow 为代付/借款，personal 为个人自费账单'),
       payer: z.enum(['me', 'her'])
@@ -125,6 +127,7 @@ export const addRecordTool: ToolDefinition<z.infer<typeof addRecordSchema>> = {
             id: tempId,
             record_type: 'gift',
             is_draft: true,
+            reasoning: record.reasoning || null,
             from_user: resolveIdentity(record.from),
             to_user: resolveIdentity(record.to),
             title: record.title || '礼物',
@@ -159,6 +162,7 @@ export const addRecordTool: ToolDefinition<z.infer<typeof addRecordSchema>> = {
             id: tempId,
             record_type: recordType,
             is_draft: true,
+            reasoning: record.reasoning || null,
             payer: dbPayer,
             status: 'pending',
             total_amount: safeTotal,
