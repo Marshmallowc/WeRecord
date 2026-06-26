@@ -45,19 +45,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing conversation history' }, { status: 400 })
     }
 
-    // Filter messages to match DeepSeek expected structure
-    const cleanedMessages = messages.map((m: any) => {
-      const role = m.role || (m.sender === 'user' ? 'user' : 'assistant')
-      let content = m.text || m.content || ''
-      if (role === 'assistant' && m.records && m.records.length > 0) {
-        content += `\n\n[已生成的草稿数据: ${JSON.stringify(m.records)}]`
-      }
-      return {
-        role,
-        content
-      }
-    })
-
     // 5. Build Agent execution context
     const context = {
       supabase,
@@ -68,6 +55,85 @@ export async function POST(req: NextRequest) {
       partnerName: partnerName,
       image_urls: image_urls || []
     }
+
+    // Filter and reconstruct messages to match DeepSeek expected structure with proper tool calling history
+    const cleanedMessages = messages.flatMap((m: any) => {
+      const role = m.role || (m.sender === 'user' ? 'user' : 'assistant')
+      const content = m.text || m.content || ''
+
+      if (role === 'assistant' && m.records && m.records.length > 0) {
+        const callId = `call_${Math.random().toString(36).substring(2, 11)}`
+        
+        // Reconstruct add_record arguments mapping DB state back to tool arguments
+        const argsRecords = m.records.map((r: any) => {
+          const recordType = r.record_type || 'aa'
+          const isGift = recordType === 'gift'
+          
+          const resolveToolIdentity = (dbVal?: string) => {
+            if (!dbVal) return undefined
+            if (context.identity === 'her') {
+              if (dbVal === 'me') return 'her'
+              if (dbVal === 'her') return 'me'
+            }
+            return dbVal
+          }
+
+          return {
+            reasoning: r.reasoning || `Reconstructed from draft: ${r.title}`,
+            type: recordType,
+            payer: isGift ? undefined : resolveToolIdentity(r.payer),
+            from: isGift ? resolveToolIdentity(r.from_user) : undefined,
+            to: isGift ? resolveToolIdentity(r.to_user) : undefined,
+            title: r.title || '账单',
+            amount: r.amount ?? r.total_amount ?? 0,
+            my_share: r.my_share ?? null,
+            category: r.category || (r.aa_items?.[0]?.category) || null,
+            description: r.description || r.note || null,
+            date: r.date || null,
+            source_text: r.source_text || r.title || '',
+            event_title: r.event_title || null
+          }
+        })
+
+        return [
+          {
+            role: 'assistant',
+            content: '',
+            tool_calls: [
+              {
+                id: callId,
+                type: 'function',
+                function: {
+                  name: 'add_record',
+                  arguments: JSON.stringify({ records: argsRecords })
+                }
+              }
+            ]
+          },
+          {
+            role: 'tool',
+            tool_call_id: callId,
+            name: 'add_record',
+            content: JSON.stringify({
+              success: true,
+              count: m.records.length,
+              records: m.records
+            })
+          },
+          {
+            role: 'assistant',
+            content: content
+          }
+        ]
+      }
+
+      return [
+        {
+          role,
+          content
+        }
+      ]
+    })
 
     // 5.5 If client requests non-streaming, execute agent synchronously and return JSON
     if (!shouldStream) {
