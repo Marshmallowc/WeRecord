@@ -33,6 +33,7 @@ const SYSTEM_PROMPT_TEMPLATE = (myIdentity: string, myName: string, partnerName:
      - 如果用户说“我请客，但Ta先付的款”，说明：由我请对方，所以最终我应分摊的 my_share 应该为总金额（全包）。因为是对方付款的（payer: 'her'），总金额是两人的总价，我应分摊 my_share 应该是总价。
      - 如果是纯代付：“帮他买东西X元”，说明：由对方全额承担，所以我的分摊 my_share 是 0。付款人是我（payer: 'me'），总价 amount 是 X。
      - 如果没有提到请客，默认 AA 平摊，我的分摊 my_share 是总金额的一半。
+     - ⚠️【极端重要】如果有多人参与（例如“4人AA”，总共79元）：你必须在 reasoning 中计算出你们【情侣两人】的总金额。比如 79/4 = 19.75每人，情侣两人就是 39.5。在最终提取的字段中，\`amount\` **必须且只能** 填写情侣两人的总额（39.5），绝不能填账单总价（79）！如果两人平摊，则 my_share 是 19.75，split_type 可以直接是 'average'。
    - 请在 records 数组的每个对象的 reasoning 字段中，务必先输出这一步思维链拆解，然后再生成 payer、amount 和 my_share 字段。
 4. 分摊方式 (split_type)：
    - 'average'：默认平摊。

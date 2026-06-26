@@ -56,15 +56,12 @@ export const addRecordSchema = z.object({
         .optional()
         .describe('收礼人 (仅 gift 类型需要，例如：\'me\' 表示自己收到礼，\'her\' 表示对方收到礼)'),
       split_type: z.enum(['average', 'payer_all', 'partner_all', 'custom', 'personal'])
-        .optional()
-        .describe('分摊方式：average 为 AA 平均分摊，payer_all 为付款人全额承担，partner_all 为对方全额承担，custom 为自定义比例分摊，personal 为个人完全自费(仅用于 personal 类型)'),
+        .describe('分摊方式：average 为 AA 平均分摊，payer_all 为付款人全额承担，partner_all 为对方全额承担，custom 为自定义比例分摊，personal 为个人完全自费(仅用于 personal 类型)。必须提供此字段。'),
       title: z.string()
         .min(1)
         .describe('简短的账单标题，例如“打车”、“晚饭”'),
       amount: z.number()
-        .nullable()
-        .optional()
-        .describe('总金额（元），如果是 AA/礼物等必须是正数'),
+        .describe('计入情侣账本的总金额（元）。⚠️注意：如果有多人聚餐（例如4人AA），这里【必须且只能】填写你们情侣两人承担的部分（即2人的总和），绝不能填账单总金额！如果是 AA/礼物等必须是正数'),
       my_share: z.number()
         .nullable()
         .optional()
